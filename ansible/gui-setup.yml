@@ -1,0 +1,180 @@
+---
+# Ansible playbook for setting up Ubuntu Desktop with xRDP and development tools
+- name: Setup GUI environment with xRDP
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Ubuntu Desktop (minimal installation)
+      apt:
+        name: ubuntu-desktop-minimal
+        state: present
+
+    - name: Install xRDP
+      apt:
+        name: xrdp
+        state: present
+
+    - name: Install Firefox
+      apt:
+        name: firefox
+        state: present
+
+    - name: Install VS Code
+      block:
+        - name: Download VS Code GPG key
+          get_url:
+            url: https://packages.microsoft.com/keys/microsoft.asc
+            dest: /tmp/microsoft.asc
+
+        - name: Add VS Code GPG key
+          apt_key:
+            file: /tmp/microsoft.asc
+            state: present
+
+        - name: Add VS Code repository
+          apt_repository:
+            repo: deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main
+            state: present
+            filename: vscode
+
+        - name: Install VS Code
+          apt:
+            name: code
+            state: present
+            update_cache: yes
+
+    - name: Install additional tools
+      apt:
+        name:
+          - git
+          - curl
+          - wget
+          - python3-pip
+          - python3-venv
+          - jq
+          - unzip
+        state: present
+
+    - name: Configure xRDP
+      block:
+        - name: Create xRDP SSL certificate
+          shell: |
+            cd /etc/xrdp
+            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+              -keyout /etc/xrdp/key.pem -out /etc/xrdp/cert.pem \
+              -subj "/C=NL/ST=Noord-Holland/L=Amsterdam/O=Azure Docker Playground/CN=localhost"
+          args:
+            creates: /etc/xrdp/cert.pem
+
+        - name: Configure xRDP settings
+          lineinfile:
+            path: /etc/xrdp/xrdp.ini
+            regexp: "{{ item.regexp }}"
+            line: "{{ item.line }}"
+          loop:
+            - { regexp: '^port=3389', line: 'port=3389' }
+            - { regexp: '^crypt_level=', line: 'crypt_level=high' }
+            - { regexp: '^max_bpp=', line: 'max_bpp=24' }
+            - { regexp: '^xserverbpp=', line: 'xserverbpp=24' }
+            - { regexp: '^security_layer=', line: 'security_layer=tls' }
+            - { regexp: '^certificate=', line: 'certificate=/etc/xrdp/cert.pem' }
+            - { regexp: '^key_file=', line: 'key_file=/etc/xrdp/key.pem' }
+          notify: Restart xRDP
+
+        - name: Fix black screen issue
+          copy:
+            content: |
+              #!/bin/sh
+              if [ -r /etc/default/locale ]; then
+                . /etc/default/locale
+                export LANG LANGUAGE
+              fi
+              startxfce4
+            dest: /etc/xrdp/startwm.sh
+            mode: '0755'
+          notify: Restart xRDP
+
+        - name: Install XFCE desktop
+          apt:
+            name: xfce4
+            state: present
+
+    - name: Configure firewall
+      block:
+        - name: Install UFW
+          apt:
+            name: ufw
+            state: present
+
+        - name: Allow SSH
+          ufw:
+            rule: allow
+            port: '22'
+            proto: tcp
+
+        - name: Allow RDP
+          ufw:
+            rule: allow
+            port: '3389'
+            proto: tcp
+
+        - name: Enable UFW
+          ufw:
+            state: enabled
+            policy: deny
+
+    - name: Create Desktop shortcuts
+      block:
+        - name: Create Desktop directory
+          file:
+            path: "/home/{{ ansible_user }}/Desktop"
+            state: directory
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: '0755'
+
+        - name: Create VS Code desktop shortcut
+          copy:
+            content: |
+              [Desktop Entry]
+              Version=1.0
+              Type=Application
+              Name=Visual Studio Code
+              Comment=Code Editing. Redefined.
+              Exec=/usr/bin/code
+              Icon=/usr/share/pixmaps/com.visualstudio.code.png
+              Terminal=false
+              Categories=Development;IDE;
+            dest: "/home/{{ ansible_user }}/Desktop/code.desktop"
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: '0755'
+
+        - name: Create Terminal desktop shortcut
+          copy:
+            content: |
+              [Desktop Entry]
+              Version=1.0
+              Type=Application
+              Name=Terminal
+              Comment=Terminal Emulator
+              Exec=xfce4-terminal
+              Icon=utilities-terminal
+              Terminal=false
+              Categories=System;TerminalEmulator;
+            dest: "/home/{{ ansible_user }}/Desktop/terminal.desktop"
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: '0755'
+
+  handlers:
+    - name: Restart xRDP
+      systemd:
+        name: xrdp
+        state: restarted
+        enabled: yes

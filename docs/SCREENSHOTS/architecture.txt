@@ -1,0 +1,43 @@
+Azure Docker Playground Architecture
+
++-----------------------------------------------------------------------+
+|                            Azure Cloud                                |
+|                                                                       |
+|  +-------------------+      +-----------------------------------+     |
+|  |                   |      |                                   |     |
+|  |  Azure Bastion    |      |  Virtual Network (10.0.0.0/16)    |     |
+|  |  (Public Access)  |      |                                   |     |
+|  |                   |      |  +-----------------------------+  |     |
+|  +--------+----------+      |  |                             |  |     |
+|           |                 |  |  Private Subnet (10.0.1.0/24)|  |     |
+|           |                 |  |                             |  |     |
+|           |                 |  |  +----------------------+   |  |     |
+|           +---------------->|  |  |                      |   |  |     |
+|                             |  |  |  GUI VM (Ubuntu)     |   |  |     |
+|                             |  |  |  - Docker           |   |  |     |
+|                             |  |  |  - xRDP             |   |  |     |
+|                             |  |  |  - VS Code          |   |  |     |
+|                             |  |  |  - Firefox          |   |  |     |
+|                             |  |  |  - Challenge Files  |   |  |     |
+|                             |  |  +----------------------+   |  |     |
+|                             |  |                             |  |     |
+|                             |  |  +----------------------+   |  |     |
+|                             |  |  |                      |   |  |     |
+|                             |  |  |  Azure Container    |   |  |     |
+|                             |  |  |  Registry (ACR)     |<--+  |     |
+|                             |  |  |  Private Endpoint   |      |     |
+|                             |  |  |                      |      |     |
+|                             |  |  +----------------------+      |     |
+|                             |  |                               |     |
+|                             |  +-------------------------------+     |
+|                             |                                         |
+|                             +-----------------------------------+     |
+|                                                                       |
++-----------------------------------------------------------------------+
+
+User Flow:
+1. User connects to Azure Bastion via browser
+2. Bastion provides RDP access to GUI VM
+3. User completes Docker challenges on the VM
+4. Custom images are pushed to private ACR
+5. Achievements are tracked in the gamification system

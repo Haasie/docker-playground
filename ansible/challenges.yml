@@ -1,0 +1,119 @@
+---
+# Ansible playbook for deploying Docker challenges
+- name: Deploy Docker challenges
+  hosts: all
+  become: true
+  vars:
+    challenges_dir: "/home/{{ ansible_user }}/docker-challenges"
+    acr_name: "{{ acr_name }}"
+    acr_login_server: "{{ acr_login_server }}"
+  tasks:
+    - name: Create challenges directory
+      file:
+        path: "{{ challenges_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    # Challenge 1: Hello Container
+    - name: Create Hello Container challenge directory
+      file:
+        path: "{{ challenges_dir }}/hello-container"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy Hello Container files
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ challenges_dir }}/hello-container/{{ item.dest }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      loop:
+        - { src: '../challenges/hello-container/Dockerfile', dest: 'Dockerfile' }
+        - { src: '../challenges/hello-container/index.html', dest: 'index.html' }
+        - { src: '../challenges/hello-container/validate.sh', dest: 'validate.sh' }
+        - { src: '../challenges/hello-container/README.md', dest: 'README.md' }
+
+    # Challenge 2: Compose Master
+    - name: Create Compose Master challenge directory
+      file:
+        path: "{{ challenges_dir }}/compose-master"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy Compose Master files
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ challenges_dir }}/compose-master/{{ item.dest }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      loop:
+        - { src: '../challenges/compose-master/docker-compose.yml', dest: 'docker-compose.yml' }
+        - { src: '../challenges/compose-master/validate.sh', dest: 'validate.sh' }
+        - { src: '../challenges/compose-master/README.md', dest: 'README.md' }
+
+    # Challenge 3: Custom Image
+    - name: Create Custom Image challenge directory
+      file:
+        path: "{{ challenges_dir }}/custom-image"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy Custom Image files
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ challenges_dir }}/custom-image/{{ item.dest }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      loop:
+        - { src: '../challenges/custom-image/Dockerfile', dest: 'Dockerfile' }
+        - { src: '../challenges/custom-image/app.py', dest: 'app.py' }
+        - { src: '../challenges/custom-image/requirements.txt', dest: 'requirements.txt' }
+        - { src: '../challenges/custom-image/build-and-push.sh', dest: 'build-and-push.sh' }
+        - { src: '../challenges/custom-image/validate.sh', dest: 'validate.sh' }
+        - { src: '../challenges/custom-image/README.md', dest: 'README.md' }
+
+    # Install challenge CLI tool
+    - name: Install challenge CLI tool
+      pip:
+        name: "{{ challenges_dir }}/challenge-cli"
+        state: present
+        extra_args: --user
+      become: false
+
+    # Set up environment variables for ACR access
+    - name: Create .env file with ACR info
+      template:
+        src: ../templates/env.j2
+        dest: "{{ challenges_dir }}/.env"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    # Create desktop shortcut for challenges
+    - name: Create challenges desktop shortcut
+      copy:
+        content: |
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=Docker Challenges
+          Comment=Open Docker Challenges Folder
+          Exec=xfce4-terminal --working-directory={{ challenges_dir }}
+          Icon=utilities-terminal
+          Terminal=false
+          Categories=Development;
+        dest: "/home/{{ ansible_user }}/Desktop/docker-challenges.desktop"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
