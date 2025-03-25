@@ -87,12 +87,18 @@
         - { src: '../challenges/custom-image/README.md', dest: 'README.md' }
 
     # Install challenge CLI tool
+    - name: Check if challenge-cli directory exists
+      stat:
+        path: "{{ playbook_dir }}/../gamification/challenge-cli"
+      register: challenge_cli_dir
+
     - name: Install challenge CLI tool
       pip:
-        name: "{{ challenges_dir }}/challenge-cli"
+        name: "{{ playbook_dir }}/../gamification/challenge-cli"
         state: present
         extra_args: --user
       become: false
+      when: challenge_cli_dir.stat.exists
 
     # Set up environment variables for ACR access
     - name: Create .env file with ACR info
