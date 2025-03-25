@@ -4,16 +4,19 @@
   hosts: all
   become: true
   vars:
-    challenges_dir: "/home/{{ ansible_user }}/docker-challenges"
     acr_name: "{{ acr_name }}"
     acr_login_server: "{{ acr_login_server }}"
   tasks:
+    - name: Set current user variable
+      set_fact:
+        current_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+        challenges_dir: "/home/{{ ansible_user | default(lookup('env', 'USER')) }}/docker-challenges"
     - name: Create challenges directory
       file:
         path: "{{ challenges_dir }}"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
 
     # Challenge 1: Hello Container
@@ -21,16 +24,16 @@
       file:
         path: "{{ challenges_dir }}/hello-container"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
 
     - name: Copy Hello Container files
       copy:
         src: "{{ item.src }}"
         dest: "{{ challenges_dir }}/hello-container/{{ item.dest }}"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
       loop:
         - { src: '../challenges/hello-container/Dockerfile', dest: 'Dockerfile' }
@@ -43,16 +46,16 @@
       file:
         path: "{{ challenges_dir }}/compose-master"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
 
     - name: Copy Compose Master files
       copy:
         src: "{{ item.src }}"
         dest: "{{ challenges_dir }}/compose-master/{{ item.dest }}"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
       loop:
         - { src: '../challenges/compose-master/docker-compose.yml', dest: 'docker-compose.yml' }
@@ -64,16 +67,16 @@
       file:
         path: "{{ challenges_dir }}/custom-image"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
 
     - name: Copy Custom Image files
       copy:
         src: "{{ item.src }}"
         dest: "{{ challenges_dir }}/custom-image/{{ item.dest }}"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'
       loop:
         - { src: '../challenges/custom-image/Dockerfile', dest: 'Dockerfile' }
@@ -96,8 +99,8 @@
       template:
         src: ../templates/env.j2
         dest: "{{ challenges_dir }}/.env"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0600'
 
     # Create desktop shortcut for challenges
@@ -113,7 +116,7 @@
           Icon=utilities-terminal
           Terminal=false
           Categories=Development;
-        dest: "/home/{{ ansible_user }}/Desktop/docker-challenges.desktop"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        dest: "/home/{{ current_user }}/Desktop/docker-challenges.desktop"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
         mode: '0755'

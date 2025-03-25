@@ -49,9 +49,13 @@
         name: docker
         state: present
 
+    - name: Set current user variable
+      set_fact:
+        current_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+
     - name: Add user to docker group
       user:
-        name: "{{ ansible_user }}"
+        name: "{{ current_user }}"
         groups: docker
         append: yes
 

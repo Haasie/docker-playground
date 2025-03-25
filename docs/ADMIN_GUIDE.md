@@ -79,12 +79,21 @@ git clone <repository-url> ~/azure-docker-playground
 cd ~/azure-docker-playground
 
 # Run the Ansible playbooks
+export USER=$(whoami)  # Ensure USER environment variable is set
 ansible-playbook -i localhost, -c local ansible/docker.yml
 ansible-playbook -i localhost, -c local ansible/gui-setup.yml
-ansible-playbook -i localhost, -c local ansible/challenges.yml -e "acr_name=<acr-name> acr_login_server=<acr-login-server>"
+
+# Set up Docker challenges using the helper script
+./scripts/setup-challenges.sh <acr-name> <acr-login-server>
 ```
 
 Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment.
+
+Alternatively, you can run the helper script without arguments and it will prompt you for the ACR information:
+
+```bash
+./scripts/setup-challenges.sh
+```
 
 ### 3. Configure ACR Admin Password
 
