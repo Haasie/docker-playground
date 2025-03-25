@@ -3,6 +3,21 @@
 - name: Install Docker and Docker Compose
   hosts: all
   become: true
+  pre_tasks:
+    - name: Check if dpkg is interrupted
+      shell: dpkg-query -l | grep -q '^.H'
+      register: dpkg_interrupted
+      failed_when: false
+      changed_when: false
+
+    - name: Fix interrupted dpkg
+      shell: dpkg --configure -a
+      when: dpkg_interrupted.rc == 0
+
+    - name: Update apt cache after fixing dpkg
+      apt:
+        update_cache: yes
+      when: dpkg_interrupted.rc == 0
   tasks:
     - name: Update apt cache
       apt:
