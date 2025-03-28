@@ -95,7 +95,37 @@ Alternatively, you can run the helper script without arguments and it will promp
 ./scripts/setup-challenges.sh
 ```
 
-### 3. Configure ACR Admin Password
+### 3. Configure RDP Access (Optional)
+
+If you need GUI access to the VM via RDP, you can use the provided script to set up RDP access:
+
+```bash
+# Set up RDP access
+./scripts/setup-rdp-access.sh
+```
+
+This script will:
+1. Create a public IP address for the VM
+2. Associate the public IP with the VM's network interface
+3. Add an NSG rule to allow RDP traffic
+4. Generate a GUI setup script that you need to run on the VM
+
+After running the script, follow these steps:
+1. Connect to your VM using Azure Bastion through the Azure Portal
+2. Run the generated GUI setup script on the VM:
+   ```bash
+   bash gui-setup-commands.sh
+   ```
+3. Connect to your VM using an RDP client with the public IP address
+
+**Security Note**: When you're done using RDP access, it's recommended to remove it for security reasons:
+
+```bash
+# Remove RDP access
+./scripts/remove-rdp-access.sh
+```
+
+### 4. Configure ACR Admin Password
 
 The Azure Container Registry is configured with admin access enabled. You need to retrieve the admin password and update the environment file:
 
