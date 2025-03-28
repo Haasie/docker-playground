@@ -1,2 +1,19 @@
-# Auto detect text files and perform LF normalization
+# Set default behavior to automatically normalize line endings
 * text=auto
+
+# Explicitly declare text files to be normalized
+*.md text
+*.sh text eol=lf
+*.yml text
+*.yaml text
+*.json text
+*.j2 text
+*.py text
+*.bicep text
+
+# Declare binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

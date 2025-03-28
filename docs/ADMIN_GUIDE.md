@@ -1,8 +1,22 @@
 # Azure Docker Playground - Administrator Guide
 
-This guide provides instructions for administrators to deploy, manage, and maintain the Azure Docker Playground environment.
+This guide provides comprehensive instructions for administrators to deploy, manage, and maintain the Azure Docker Playground environment. It addresses common issues and follows security best practices for production deployments.
 
 ## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Deployment](#deployment)
+  - [Automated Deployment](#automated-deployment)
+  - [Manual Deployment](#manual-deployment)
+- [Configuration](#configuration)
+  - [Access the VM Securely](#access-the-vm-securely)
+  - [Configure ACR Admin Password](#configure-acr-admin-password)
+  - [Verify Deployment](#verify-deployment)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Logs and Diagnostics](#logs-and-diagnostics)
+- [Security Considerations](#security-considerations)
+- [Maintenance](#maintenance)
 
 - [Prerequisites](#prerequisites)
 - [Deployment](#deployment)
@@ -95,34 +109,38 @@ Alternatively, you can run the helper script without arguments and it will promp
 ./scripts/setup-challenges.sh
 ```
 
-### 3. Configure RDP Access (Optional)
+### 3. Set Up the VM Environment
 
-If you need GUI access to the VM via RDP, you can use the provided script to set up RDP access:
+Once connected to the VM via Bastion, set up the environment:
 
 ```bash
-# Set up RDP access
-./scripts/setup-rdp-access.sh
+# Install prerequisites
+sudo apt update
+sudo apt install -y git ansible
+
+# Clone the repository
+git clone https://github.com/Haasie/docker-playground.git ~/azure-docker-playground
+cd ~/azure-docker-playground
+
+# Set up the environment
+export USER=$(whoami)  # Ensure USER environment variable is set
+
+# Install Docker and tools
+ansible-playbook -i localhost, -c local ansible/docker.yml
+
+# Set up GUI environment
+ansible-playbook -i localhost, -c local ansible/gui-setup.yml
+
+# Set up Docker challenges
+./scripts/setup-challenges.sh <acr-name> <acr-login-server>
 ```
 
-This script will:
-1. Create a public IP address for the VM
-2. Associate the public IP with the VM's network interface
-3. Add an NSG rule to allow RDP traffic
-4. Generate a GUI setup script that you need to run on the VM
+Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment.
 
-After running the script, follow these steps:
-1. Connect to your VM using Azure Bastion through the Azure Portal
-2. Run the generated GUI setup script on the VM:
-   ```bash
-   bash gui-setup-commands.sh
-   ```
-3. Connect to your VM using an RDP client with the public IP address
-
-**Security Note**: When you're done using RDP access, it's recommended to remove it for security reasons:
+Alternatively, you can run the helper script without arguments and it will prompt you for the ACR information:
 
 ```bash
-# Remove RDP access
-./scripts/remove-rdp-access.sh
+./scripts/setup-challenges.sh
 ```
 
 ### 4. Configure ACR Admin Password
@@ -204,6 +222,56 @@ Monitor the environment using Azure Monitor:
    - Verify Azure Bastion is deployed correctly
    - Check network security group rules
    - Ensure the VM is running
+   - For RDP issues, see the [RDP Troubleshooting Guide](SECURE_ACCESS_GUIDE.md#troubleshooting)
+
+2. **Package Installation Failures**:
+   - If you encounter dpkg interruption errors, the Ansible playbooks include pre-tasks to fix this automatically
+   - If manual intervention is needed:
+     ```bash
+     sudo dpkg --configure -a
+     sudo apt update
+     ```
+
+3. **Docker Permission Issues**:
+   - Ensure your user is in the docker group:
+     ```bash
+     sudo usermod -aG docker $USER
+     # Log out and log back in for changes to take effect
+     ```
+
+4. **ACR Authentication Issues**:
+   - Verify the ACR admin credentials:
+     ```bash
+     az acr login --name <acr-name> --username <acr-name> --password <acr-password>
+     ```
+   - If needed, regenerate the admin password:
+     ```bash
+     az acr credential renew --name <acr-name> --password-name password
+     ```
+
+5. **Ansible Variable Issues**:
+   - Ensure the USER environment variable is set before running Ansible playbooks:
+     ```bash
+     export USER=$(whoami)
+     ```
+
+### Logs and Diagnostics
+
+Check these logs for troubleshooting:
+
+```bash
+# Docker logs
+sudo journalctl -u docker
+
+# xRDP logs
+sudo cat /var/log/xrdp-sesman.log
+
+# Ansible logs (if you used -v flag)
+cat ansible.log
+
+# Azure VM boot diagnostics (via Azure Portal)
+# Navigate to your VM > Boot diagnostics
+```
 
 2. **Docker Issues**:
    - Check Docker service: `sudo systemctl status docker`
