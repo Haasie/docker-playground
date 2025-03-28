@@ -227,8 +227,18 @@ The Azure Container Registry is configured with admin access enabled. You need t
    ```bash
    # Test login using the credentials in the .env file
    source ~/docker-challenges/.env
-   echo $ACR_PASSWORD | docker login $ACR_LOGIN_SERVER -u $ACR_USERNAME --password-stdin
+   
+   # Method 1: Using environment variables directly
+   docker login $ACR_LOGIN_SERVER -u $ACR_NAME -p $ACR_PASSWORD
+   
+   # Alternative Method 2: If Method 1 doesn't work due to special characters in password
+   # Create a temporary password file (will be deleted after use)
+   echo $ACR_PASSWORD > ~/temp_password.txt
+   cat ~/temp_password.txt | docker login $ACR_LOGIN_SERVER -u $ACR_NAME --password-stdin
+   rm ~/temp_password.txt
    ```
+   
+   > **Note**: Using `-p` directly on the command line is convenient for scripting but may expose the password in the command history. In production environments, consider using the more secure password-stdin method with proper handling.
 
 ### Start the Achievement API
 
