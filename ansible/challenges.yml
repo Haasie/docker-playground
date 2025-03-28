@@ -7,10 +7,19 @@
     acr_name: "{{ acr_name }}"
     acr_login_server: "{{ acr_login_server }}"
   tasks:
+    - name: Debug ansible_user and USER environment variable
+      debug:
+        msg: "ansible_user: {{ ansible_user | default('not set') }}, USER env: {{ lookup('env', 'USER') | default('not set') }}, HOME env: {{ lookup('env', 'HOME') | default('not set') }}"
+
+    - name: Get effective username
+      command: whoami
+      register: whoami_result
+      changed_when: false
+
     - name: Set current user variable
       set_fact:
-        current_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
-        challenges_dir: "/home/{{ ansible_user | default(lookup('env', 'USER')) }}/docker-challenges"
+        current_user: "{{ whoami_result.stdout }}"
+        challenges_dir: "/home/{{ whoami_result.stdout }}/docker-challenges"
     - name: Create challenges directory
       file:
         path: "{{ challenges_dir }}"
@@ -116,11 +125,26 @@
       failed_when: pip_result.rc != 0 and 'already satisfied' not in pip_result.stderr
       when: challenge_cli_dir.stat.exists
 
+    - name: Check if .bashrc exists
+      stat:
+        path: "/home/{{ current_user }}/.bashrc"
+      register: bashrc_file
+
+    - name: Create .bashrc if it doesn't exist
+      file:
+        path: "/home/{{ current_user }}/.bashrc"
+        state: touch
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0644'
+      when: not bashrc_file.stat.exists and challenge_cli_dir.stat.exists
+
     - name: Add ~/.local/bin to PATH in .bashrc if not already there
       lineinfile:
         path: "/home/{{ current_user }}/.bashrc"
         line: 'export PATH=$PATH:$HOME/.local/bin'
         state: present
+        create: yes
       when: challenge_cli_dir.stat.exists
 
     # Set up environment variables for ACR access
