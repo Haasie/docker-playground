@@ -9,16 +9,21 @@ This guide provides comprehensive instructions for administrators to deploy, man
   - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Deployment](#deployment)
+  - [Deployment Parameters](#deployment-parameters)
 - [Post-Deployment Configuration](#post-deployment-configuration)
   - [Access the VM Securely](#access-the-vm-securely)
+  - [Set Up the VM Environment](#set-up-the-vm-environment)
+  - [Set Up Docker and GUI](#set-up-docker-and-gui)
   - [Set Up Docker Challenges](#set-up-docker-challenges)
   - [Configure ACR Admin Password](#configure-acr-admin-password)
+  - [Start the Achievement API](#start-the-achievement-api)
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
   - [Logs and Diagnostics](#logs-and-diagnostics)
 - [Security Considerations](#security-considerations)
-- [Maintenance](#maintenance-tasks)
-  - [Available Scripts](#available-scripts)
+- [Backup and Monitoring](#backup-and-monitoring)
+- [Maintenance](#maintenance)
+  - [Utility Scripts](#utility-scripts)
   - [Resetting the Environment](#resetting-the-environment)
   - [Removing the Environment](#removing-the-environment)
 
@@ -132,38 +137,9 @@ The deployment uses Azure Bastion with the Standard SKU for secure access to the
 
 For detailed instructions, see the [Secure Access Guide](SECURE_ACCESS_GUIDE.md).
 
-### Set Up Docker Challenges
+### Set Up the VM Environment
 
-After deploying the infrastructure, set up the Docker challenges using the provided script:
-
-```bash
-# Navigate to the scripts directory
-cd scripts
-
-# Make the script executable (if needed)
-chmod +x setup-challenges.sh
-
-# Run the setup script with your ACR details
-./setup-challenges.sh <acr-name> <acr-login-server>
-export USER=$(whoami)  # Ensure USER environment variable is set
-ansible-playbook -i localhost, -c local ansible/docker.yml
-ansible-playbook -i localhost, -c local ansible/gui-setup.yml
-
-# Set up Docker challenges using the helper script
-./scripts/setup-challenges.sh <acr-name> <acr-login-server>
-```
-
-Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment.
-
-Alternatively, you can run the helper script without arguments and it will prompt you for the ACR information:
-
-```bash
-./scripts/setup-challenges.sh
-```
-
-### 3. Set Up the VM Environment
-
-Once connected to the VM via Bastion, set up the environment:
+Once connected to the VM via Bastion, follow these steps to set up the environment:
 
 ```bash
 # Install prerequisites
@@ -173,18 +149,36 @@ sudo apt install -y git ansible
 # Clone the repository
 git clone https://github.com/Haasie/docker-playground.git ~/azure-docker-playground
 cd ~/azure-docker-playground
+```
 
+### Set Up Docker and GUI
+
+Install Docker and configure the GUI environment:
+
+```bash
 # Set up the environment
 export USER=$(whoami)  # Ensure USER environment variable is set
 
 # Install Docker and tools
 ansible-playbook -i localhost, -c local ansible/docker.yml
 
-# Set up GUI environment
+# Set up GUI environment with XFCE and xRDP
 ansible-playbook -i localhost, -c local ansible/gui-setup.yml
+```
 
-# Set up Docker challenges
-./scripts/setup-challenges.sh <acr-name> <acr-login-server>
+### Set Up Docker Challenges
+
+After setting up the basic environment, deploy the Docker challenges:
+
+```bash
+# Navigate to the scripts directory
+cd ~/azure-docker-playground/scripts
+
+# Make the script executable (if needed)
+chmod +x setup-challenges.sh
+
+# Run the setup script with your ACR details
+./setup-challenges.sh <acr-name> <acr-login-server>
 ```
 
 Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment.
@@ -195,7 +189,7 @@ Alternatively, you can run the helper script without arguments and it will promp
 ./scripts/setup-challenges.sh
 ```
 
-### 4. Configure ACR Admin Password
+### Configure ACR Admin Password
 
 The Azure Container Registry is configured with admin access enabled. You need to retrieve the admin password and update the environment file:
 
@@ -230,7 +224,7 @@ The Azure Container Registry is configured with admin access enabled. You need t
    echo $ACR_PASSWORD | docker login $ACR_LOGIN_SERVER -u $ACR_USERNAME --password-stdin
    ```
 
-### 4. Start the Achievement API
+### Start the Achievement API
 
 Start the achievement API container:
 
@@ -240,9 +234,9 @@ docker build -t achievement-api .
 docker run -d -p 5050:5050 --name achievement-api achievement-api
 ```
 
-## Maintenance
+## Backup and Monitoring
 
-### Backup
+### Backup Strategy
 
 To back up the environment, you should:
 
@@ -335,9 +329,9 @@ cat ansible.log
    - Check RBAC permissions
    - Test ACR login: `az acr login --name <acr-name>`
 
-## Maintenance Tasks
+## Maintenance
 
-### Available Scripts
+### Utility Scripts
 
 The Azure Docker Playground includes several utility scripts to help with deployment, configuration, and maintenance. All scripts are located in the `scripts/` directory.
 
@@ -383,7 +377,7 @@ The Azure Docker Playground includes several utility scripts to help with deploy
   - Pushes images to the specified ACR
   - Sets up challenge configurations
 
-#### Maintenance Scripts
+#### System Maintenance Scripts
 
 **`set-vm-password.sh`**
 
