@@ -27,6 +27,7 @@ wheels/
 venv/
 env/
 ENV/
+.env
 
 # Local storage for achievement API
 achievements.json
