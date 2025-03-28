@@ -22,6 +22,15 @@ The Azure Docker Playground provides a complete environment for learning Docker 
 
 ## Connecting to the Environment
 
+To access the Docker Playground environment:
+
+1. Log in to the [Azure Portal](https://portal.azure.com)
+2. Navigate to the Virtual Machines section
+3. Select the Docker Playground VM (typically named `adp-dev-gui-vm`)
+4. Click on "Connect" and select "Bastion"
+5. Enter the username and password provided by your administrator
+6. You will be connected to the Ubuntu desktop environment
+
 ### Prerequisites
 
 - Access credentials provided by your administrator
@@ -155,6 +164,60 @@ VS Code is pre-installed with Docker extensions. Use it to:
 - Edit Dockerfiles and docker-compose.yml files with syntax highlighting
 - View and manage containers and images with the Docker extension
 - Edit code with full IDE features
+
+## Resetting the Environment
+
+If you need to reset the Docker Playground to its initial state (for example, to allow a new user to start fresh):
+
+### For Users
+
+To reset just your Docker resources and challenge progress:
+
+1. Open a terminal in the VM
+2. Run the following commands:
+
+```bash
+# Stop and remove all containers
+docker stop $(docker ps -a -q) 2>/dev/null || true
+docker rm $(docker ps -a -q) 2>/dev/null || true
+
+# Remove all custom images
+docker rmi $(docker images -a -q) 2>/dev/null || true
+
+# Remove all volumes
+docker volume rm $(docker volume ls -q) 2>/dev/null || true
+
+# Clean up Docker system
+docker system prune -a -f
+
+# Reset challenge directories
+rm -rf ~/docker-challenges/* 2>/dev/null || true
+rm -rf ~/.docker-playground-progress 2>/dev/null || true
+rm -rf ~/completed-challenges 2>/dev/null || true
+
+# Reset badge progress if it exists
+if [ -f ~/.docker-badges.json ]; then
+    echo '{}' > ~/.docker-badges.json
+fi
+```
+
+### For Administrators
+
+Administrators can perform a complete environment reset using the provided script:
+
+1. Connect to the deployment environment where you ran the initial setup
+2. Run the reset script:
+
+```bash
+./scripts/reset-environment.sh
+```
+
+This script offers two reset options:
+
+- **Quick Reset**: Cleans Docker resources on the VM
+- **Full Reset**: Redeploys the VM from its original image
+
+The script will guide you through the process and provide options for resetting the Azure Container Registry as well.
 
 ## Troubleshooting
 
