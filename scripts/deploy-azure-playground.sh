@@ -100,14 +100,20 @@ echo -e "${BLUE}ACR Name:${NC} $ACR_NAME"
 echo -e "${BLUE}ACR Login Server:${NC} $ACR_LOGIN_SERVER"
 
 echo -e "\n${BLUE}Next Steps:${NC}"
-echo -e "1. Set up a password for your VM user (required for RDP access):"
-echo -e "   ${YELLOW}./scripts/set-vm-password.sh${NC}"
-echo -e "\n2. Connect to your VM via Azure Bastion:"
+
+echo -e "1. Remove public IP from your VM for enhanced security (recommended):"
+echo -e "   ${YELLOW}./scripts/fix-remove-public-ip.sh $RESOURCE_GROUP $GUI_VM_NAME${NC}"
+
+echo -e "\n2. Set up a password for your VM user (required for RDP access via Bastion):"
+echo -e "   ${YELLOW}./scripts/set-vm-password.sh $RESOURCE_GROUP $GUI_VM_NAME${NC}"
+
+echo -e "\n3. Connect to your VM via Azure Bastion (secure access method):"
 echo -e "   - Go to the Azure Portal"
 echo -e "   - Navigate to your VM ($GUI_VM_NAME)"
 echo -e "   - Click 'Connect' and select 'Bastion'"
 echo -e "   - Enter your credentials and connect"
-echo -e "\n3. Once connected, run the following commands to set up the environment:"
+
+echo -e "\n4. Once connected, set up the Docker challenges:"
 echo -e "   ${YELLOW}sudo apt update${NC}"
 echo -e "   ${YELLOW}sudo apt install -y git ansible${NC}"
 echo -e "   ${YELLOW}git clone https://github.com/Haasie/docker-playground.git ~/azure-docker-playground${NC}"
@@ -116,6 +122,13 @@ echo -e "   ${YELLOW}export USER=$(whoami)${NC}"
 echo -e "   ${YELLOW}ansible-playbook -i localhost, -c local ansible/docker.yml${NC}"
 echo -e "   ${YELLOW}ansible-playbook -i localhost, -c local ansible/gui-setup.yml${NC}"
 echo -e "   ${YELLOW}./scripts/setup-challenges.sh $ACR_NAME $ACR_LOGIN_SERVER${NC}"
+
+echo -e "\n${BLUE}Maintenance Commands:${NC}"
+echo -e "- Reset environment for new users:   ${YELLOW}./scripts/reset-environment.sh${NC}"
+echo -e "- Remove all Azure resources:      ${YELLOW}./scripts/destroy-env.sh $RESOURCE_GROUP${NC}"
+
 echo -e "\n${BLUE}For detailed instructions, see the Admin Guide:${NC}"
 echo -e "${YELLOW}docs/ADMIN_GUIDE.md${NC}"
+echo -e "${BLUE}For secure access instructions:${NC}"
+echo -e "${YELLOW}docs/SECURE_ACCESS_GUIDE.md${NC}"
 echo -e "\n${BLUE}=======================================${NC}"

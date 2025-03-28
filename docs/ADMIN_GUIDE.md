@@ -4,26 +4,75 @@ This guide provides comprehensive instructions for administrators to deploy, man
 
 ## Table of Contents
 
+- [Getting Started](#getting-started)
+  - [Obtaining the Project](#obtaining-the-project)
+  - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Deployment](#deployment)
-  - [Automated Deployment](#automated-deployment)
-  - [Manual Deployment](#manual-deployment)
-- [Configuration](#configuration)
+- [Post-Deployment Configuration](#post-deployment-configuration)
   - [Access the VM Securely](#access-the-vm-securely)
+  - [Set Up Docker Challenges](#set-up-docker-challenges)
   - [Configure ACR Admin Password](#configure-acr-admin-password)
-  - [Verify Deployment](#verify-deployment)
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
   - [Logs and Diagnostics](#logs-and-diagnostics)
 - [Security Considerations](#security-considerations)
-- [Maintenance](#maintenance)
+- [Maintenance](#maintenance-tasks)
+  - [Available Scripts](#available-scripts)
+  - [Resetting the Environment](#resetting-the-environment)
+  - [Removing the Environment](#removing-the-environment)
 
-- [Prerequisites](#prerequisites)
-- [Deployment](#deployment)
-- [Post-Deployment Configuration](#post-deployment-configuration)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
-- [Cleanup](#cleanup)
+## Getting Started
+
+### Obtaining the Project
+
+To get started with the Azure Docker Playground, you first need to clone the repository:
+
+```bash
+# Clone the repository
+git clone https://github.com/Haasie/docker-playground.git
+
+# Navigate to the project directory
+cd docker-playground
+```
+
+Alternatively, you can download the project as a ZIP file from GitHub:
+
+1. Go to [https://github.com/Haasie/docker-playground](https://github.com/Haasie/docker-playground)
+2. Click the 'Code' button
+3. Select 'Download ZIP'
+4. Extract the ZIP file to your local machine
+
+### Repository Structure
+
+The repository is organized as follows:
+
+```bash
+├── ansible/            # Ansible playbooks for VM configuration
+│   ├── docker.yml      # Docker installation
+│   └── gui-setup.yml   # XFCE + xRDP setup
+├── bicep/              # Bicep templates for Azure infrastructure
+│   ├── main.bicep      # Main deployment template
+│   ├── network.bicep   # VNet/Subnet/Bastion
+│   ├── gui-vm.bicep    # Ubuntu VM
+│   └── acr.bicep       # Container Registry
+├── challenges/         # Docker learning challenges
+├── docs/               # Documentation
+│   ├── ADMIN_GUIDE.md  # For infrastructure admins
+│   ├── SECURE_ACCESS_GUIDE.md # Secure access instructions
+│   └── USER_GUIDE.md   # For developers
+├── gamification/       # Badge and achievement system
+├── scripts/            # Utility scripts
+│   ├── deploy-azure-playground.sh  # Main deployment script
+│   ├── destroy-env.sh             # Remove all Azure resources
+│   ├── fix-remove-public-ip.sh    # Script to remove public IPs for security
+│   ├── reset-environment.sh       # Reset environment for new users
+│   ├── set-vm-password.sh         # Script to set VM password for RDP
+│   └── setup-challenges.sh        # Script to set up Docker challenges
+└── templates/          # Configuration templates
+```
+
+The `scripts/` directory contains all the utility scripts needed for deployment, management, and maintenance of the Azure Docker Playground environment. Each script is designed to handle a specific aspect of the environment lifecycle.
 
 ## Prerequisites
 
@@ -43,10 +92,10 @@ The Azure Docker Playground can be deployed with a single command:
 cd scripts
 
 # Make the script executable
-chmod +x deploy.sh
+chmod +x deploy-azure-playground.sh
 
 # Run the deployment script
-./deploy.sh
+./deploy-azure-playground.sh
 ```
 
 The script will:
@@ -70,29 +119,32 @@ You will be prompted for the following parameters:
 
 After deployment, you need to configure the environment:
 
-### 1. Connect to the GUI VM
+### Access the VM Securely
 
-Use Azure Bastion to connect to the GUI VM:
+The deployment uses Azure Bastion with the Standard SKU for secure access to the Linux VM:
 
 1. Go to the Azure Portal
 2. Navigate to the deployed VM
 3. Click on "Connect" and select "Bastion"
 4. Enter the admin username and SSH key or password
 
-### 2. Run Ansible Playbooks
+> **Note**: The Standard SKU for Azure Bastion is required for proper functionality with Linux VMs, providing features like native client support and file transfer capabilities.
 
-Once connected to the VM, run the following commands to set up the environment:
+For detailed instructions, see the [Secure Access Guide](SECURE_ACCESS_GUIDE.md).
+
+### Set Up Docker Challenges
+
+After deploying the infrastructure, set up the Docker challenges using the provided script:
 
 ```bash
-# Install Ansible
-sudo apt update
-sudo apt install -y ansible
+# Navigate to the scripts directory
+cd scripts
 
-# Clone the repository (if not already available)
-git clone <repository-url> ~/azure-docker-playground
-cd ~/azure-docker-playground
+# Make the script executable (if needed)
+chmod +x setup-challenges.sh
 
-# Run the Ansible playbooks
+# Run the setup script with your ACR details
+./setup-challenges.sh <acr-name> <acr-login-server>
 export USER=$(whoami)  # Ensure USER environment variable is set
 ansible-playbook -i localhost, -c local ansible/docker.yml
 ansible-playbook -i localhost, -c local ansible/gui-setup.yml
@@ -283,7 +335,144 @@ cat ansible.log
    - Check RBAC permissions
    - Test ACR login: `az acr login --name <acr-name>`
 
-## Cleanup
+## Maintenance Tasks
+
+### Available Scripts
+
+The Azure Docker Playground includes several utility scripts to help with deployment, configuration, and maintenance. All scripts are located in the `scripts/` directory.
+
+#### Deployment Scripts
+
+**`deploy-azure-playground.sh`**
+
+- **Purpose**: Main deployment script that creates the entire Azure Docker Playground environment
+- **Parameters**:
+  - Resource Group Name (optional, default: adp-rg)
+  - Location (optional, default: westeurope)
+  - Environment Name (optional, default: dev)
+- **Usage**:
+
+  ```bash
+  cd scripts
+  chmod +x deploy-azure-playground.sh
+  ./deploy-azure-playground.sh
+  ```
+
+- **What it does**:
+  - Creates Azure resource group if it doesn't exist
+  - Deploys Bicep templates for VNet, Subnet, Bastion, VM, and ACR
+  - Sets up networking with private endpoints
+  - Configures security settings
+
+**`setup-challenges.sh`**
+
+- **Purpose**: Sets up Docker challenges in the Azure Container Registry
+- **Parameters**:
+  - ACR Name (required)
+  - ACR Login Server (required)
+- **Usage**:
+
+  ```bash
+  cd scripts
+  chmod +x setup-challenges.sh
+  ./setup-challenges.sh myacr myacr.azurecr.io
+  ```
+
+- **What it does**:
+  - Builds Docker challenge images
+  - Pushes images to the specified ACR
+  - Sets up challenge configurations
+
+#### Maintenance Scripts
+
+**`set-vm-password.sh`**
+
+- **Purpose**: Sets or resets the password for VM RDP access
+- **Parameters**:
+  - Resource Group (required)
+  - VM Name (required)
+  - New Password (will be prompted securely)
+- **Usage**:
+
+  ```bash
+  cd scripts
+  chmod +x set-vm-password.sh
+  ./set-vm-password.sh adp-rg adp-vm-dev
+  ```
+
+**`fix-remove-public-ip.sh`**
+
+- **Purpose**: Removes public IP addresses from VMs for enhanced security
+- **Parameters**:
+  - Resource Group (required)
+  - VM Name (required)
+- **Usage**:
+
+  ```bash
+  cd scripts
+  chmod +x fix-remove-public-ip.sh
+  ./fix-remove-public-ip.sh adp-rg adp-vm-dev
+  ```
+
+- **Security Note**: This script implements the security best practice of keeping VMs on a private network and using Azure Bastion for access.
+
+**`reset-environment.sh`**
+
+- **Purpose**: Resets the Docker Playground environment for new users
+- **Options**:
+  - Quick Reset: Cleans Docker resources without redeploying (default)
+  - Full Reset: Redeploys the VM from its original image
+- **Usage**:
+
+  ```bash
+  cd scripts
+  chmod +x reset-environment.sh
+  ./reset-environment.sh [--quick|--full]
+  ```
+
+- **What it does**:
+  - Removes all Docker containers, images, and volumes
+  - Resets the ACR repositories (optional)
+  - For full reset: redeploys the VM
+
+**`destroy-env.sh`**
+
+- **Purpose**: Completely removes all Azure Docker Playground resources
+- **Parameters**:
+  - Resource Group (required)
+- **Usage**:
+
+  ```bash
+  cd scripts
+  chmod +x destroy-env.sh
+  ./destroy-env.sh adp-rg
+  ```
+
+- **Warning**: This script permanently deletes all resources. Use with caution.
+
+### Resetting the Environment
+
+To reset the Docker Playground to its initial state for a new user:
+
+```bash
+# Navigate to the scripts directory
+cd scripts
+
+# Make the script executable (if needed)
+chmod +x reset-environment.sh
+
+# Run the reset script
+./reset-environment.sh
+```
+
+The script offers two reset options:
+
+- **Quick Reset**: Cleans Docker resources on the VM without redeploying
+- **Full Reset**: Redeploys the VM from its original image
+
+It also provides an option to reset the Azure Container Registry repositories.
+
+### Removing the Environment
 
 To completely remove the Azure Docker Playground environment:
 
@@ -291,7 +480,7 @@ To completely remove the Azure Docker Playground environment:
 # Navigate to the scripts directory
 cd scripts
 
-# Make the script executable
+# Make the script executable (if needed)
 chmod +x destroy-env.sh
 
 # Run the cleanup script

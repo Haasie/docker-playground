@@ -60,11 +60,14 @@ resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-05-01' = {
   }
 }
 
-// Create Azure Bastion Host
+// Create Azure Bastion Host with Standard SKU for Linux VM compatibility
 resource bastion 'Microsoft.Network/bastionHosts@2021-05-01' = {
   name: bastionName
   location: location
   tags: tags
+  sku: {
+    name: 'Standard'
+  }
   properties: {
     ipConfigurations: [
       {
