@@ -31,7 +31,20 @@ fi
 
 # Run the Ansible playbook
 echo -e "\n${BLUE}Running Ansible playbook to set up challenges...${NC}"
-ansible-playbook -i localhost, -c local ansible/challenges.yml -e "acr_name=$ACR_NAME acr_login_server=$ACR_LOGIN_SERVER"
+
+# Determine the correct path to the Ansible playbook
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+ANSIBLE_DIR="$ROOT_DIR/ansible"
+
+# Check if the playbook exists
+if [ ! -f "$ANSIBLE_DIR/challenges.yml" ]; then
+    echo -e "\n${RED}Error: Ansible playbook not found at $ANSIBLE_DIR/challenges.yml${NC}"
+    exit 1
+fi
+
+# Run the playbook with the correct path
+ansible-playbook -i localhost, -c local "$ANSIBLE_DIR/challenges.yml" -e "acr_name=$ACR_NAME acr_login_server=$ACR_LOGIN_SERVER"
 
 # Check if playbook execution was successful
 if [ $? -eq 0 ]; then

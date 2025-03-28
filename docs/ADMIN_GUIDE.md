@@ -171,23 +171,29 @@ ansible-playbook -i localhost, -c local ansible/gui-setup.yml
 After setting up the basic environment, deploy the Docker challenges:
 
 ```bash
-# Navigate to the scripts directory
-cd ~/azure-docker-playground/scripts
+# Navigate to the project root directory
+cd ~/azure-docker-playground
 
 # Make the script executable (if needed)
-chmod +x setup-challenges.sh
+chmod +x scripts/setup-challenges.sh
 
 # Run the setup script with your ACR details
-./setup-challenges.sh <acr-name> <acr-login-server>
+./scripts/setup-challenges.sh <acr-name> <acr-login-server>
 ```
 
-Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment.
+Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment. For example:
+
+```bash
+./scripts/setup-challenges.sh adpdevacr adpdevacr.azurecr.io
+```
 
 Alternatively, you can run the helper script without arguments and it will prompt you for the ACR information:
 
 ```bash
 ./scripts/setup-challenges.sh
 ```
+
+> **Note**: The script must be run from the project root directory to correctly locate the Ansible playbooks.
 
 ### Configure ACR Admin Password
 

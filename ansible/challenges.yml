@@ -92,12 +92,35 @@
         path: "{{ playbook_dir }}/../gamification/challenge-cli"
       register: challenge_cli_dir
 
-    - name: Install challenge CLI tool
-      pip:
-        name: "{{ playbook_dir }}/../gamification/challenge-cli"
-        state: present
-        extra_args: --user
+    - name: Create Python user directories with correct permissions
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+      loop:
+        - "/home/{{ current_user }}/.local"
+        - "/home/{{ current_user }}/.local/bin"
+        - "/home/{{ current_user }}/.local/lib"
+        - "/home/{{ current_user }}/.local/lib/python3.10"
+        - "/home/{{ current_user }}/.local/lib/python3.10/site-packages"
+      when: challenge_cli_dir.stat.exists
+
+    - name: Install challenge CLI tool using pip
+      shell: "pip3 install --user {{ playbook_dir }}/../gamification/challenge-cli"
+      args:
+        executable: /bin/bash
       become: false
+      register: pip_result
+      failed_when: pip_result.rc != 0 and 'already satisfied' not in pip_result.stderr
+      when: challenge_cli_dir.stat.exists
+
+    - name: Add ~/.local/bin to PATH in .bashrc if not already there
+      lineinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        line: 'export PATH=$PATH:$HOME/.local/bin'
+        state: present
       when: challenge_cli_dir.stat.exists
 
     # Set up environment variables for ACR access
@@ -108,6 +131,21 @@
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
         mode: '0600'
+
+    # Create Desktop directory if it doesn't exist
+    - name: Check if Desktop directory exists
+      stat:
+        path: "/home/{{ current_user }}/Desktop"
+      register: desktop_dir
+
+    - name: Create Desktop directory if it doesn't exist
+      file:
+        path: "/home/{{ current_user }}/Desktop"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+      when: not desktop_dir.stat.exists
 
     # Create desktop shortcut for challenges
     - name: Create challenges desktop shortcut
