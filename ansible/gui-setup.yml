@@ -155,49 +155,73 @@
             state: enabled
             policy: deny
 
-    - name: Create Desktop shortcuts
-      block:
-        - name: Create Desktop directory
-          file:
-            path: "/home/{{ current_user }}/Desktop"
-            state: directory
-            owner: "{{ current_user }}"
-            group: "{{ current_user }}"
-            mode: '0755'
+    - name: Ensure Desktop directory exists
+      file:
+        path: "/home/{{ current_user }}/Desktop"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
 
-        - name: Create VS Code desktop shortcut
-          copy:
-            content: |
-              [Desktop Entry]
-              Version=1.0
-              Type=Application
-              Name=Visual Studio Code
-              Comment=Code Editing. Redefined.
-              Exec=/usr/bin/code
-              Icon=/usr/share/pixmaps/com.visualstudio.code.png
-              Terminal=false
-              Categories=Development;IDE;
-            dest: "/home/{{ current_user }}/Desktop/code.desktop"
-            owner: "{{ current_user }}"
-            group: "{{ current_user }}"
-            mode: '0755'
+    - name: Create Terminal shortcut on Desktop
+      copy:
+        dest: "/home/{{ current_user }}/Desktop/ADP_Terminal.desktop"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755' # Make it executable
+        content: |
+          [Desktop Entry]
+          Version=1.0
+          Name=ADP Terminal
+          Comment=Open Terminal in Azure Docker Playground directory
+          Exec=gnome-terminal --working-directory=/home/{{ current_user }}/azure-docker-playground
+          Icon=utilities-terminal
+          Terminal=false
+          Type=Application
+          Categories=Utility;Application;
 
-        - name: Create Terminal desktop shortcut
-          copy:
-            content: |
-              [Desktop Entry]
-              Version=1.0
-              Type=Application
-              Name=Terminal
-              Comment=Terminal Emulator
-              Exec=xfce4-terminal
-              Icon=utilities-terminal
-              Terminal=false
-              Categories=System;TerminalEmulator;
-            dest: "/home/{{ current_user }}/Desktop/terminal.desktop"
-            owner: "{{ current_user }}"
-            group: "{{ current_user }}"
-            mode: '0755'
+    - name: Copy USER_GUIDE.md to Desktop
+      copy:
+        src: "/home/{{ current_user }}/azure-docker-playground/docs/USER_GUIDE.md"
+        dest: "/home/{{ current_user }}/Desktop/USER_GUIDE.md"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0644'
+        remote_src: yes # Specify that the source is on the remote machine
+
+    - name: Create Firefox shortcut on Desktop
+      copy:
+        dest: "/home/{{ current_user }}/Desktop/Firefox.desktop"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+        content: |
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=Firefox
+          Comment=Access the Internet
+          Exec=firefox %u
+          Icon=firefox
+          Terminal=false
+          Categories=Network;WebBrowser;
+
+    - name: Create VS Code shortcut on Desktop
+      copy:
+        dest: "/home/{{ current_user }}/Desktop/VSCode.desktop"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+        content: |
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=Visual Studio Code
+          Comment=Code Editing. Redefined.
+          Exec=/usr/bin/code
+          Icon=/usr/share/pixmaps/com.visualstudio.code.png
+          Terminal=false
+          Categories=Utility;TextEditor;Development;IDE;
 
   handlers:
     - name: Restart xRDP
