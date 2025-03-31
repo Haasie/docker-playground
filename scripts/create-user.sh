@@ -67,18 +67,20 @@ mkdir -p $DESKTOP_DIR
 chown $USERNAME:$USERNAME $DESKTOP_DIR
 chmod 755 $DESKTOP_DIR
 
-# Create symbolic links to the main challenges directory
+# Copy the challenges to the user's directory
 echo -e "${BLUE}Setting up Docker challenges for $USERNAME...${NC}"
-CHALLENGES_DIR="/home/azureadmin/azure-docker-playground/docker-challenges"
-USER_CHALLENGES_DIR="/home/$USERNAME/azure-docker-playground"
+ADMIN_CHALLENGES_DIR="/home/azureadmin/azure-docker-playground/docker-challenges"
+USER_ADP_DIR="/home/$USERNAME/azure-docker-playground"
+USER_CHALLENGES_DIR="$USER_ADP_DIR/docker-challenges"
 
 # Create the user's azure-docker-playground directory
-mkdir -p $USER_CHALLENGES_DIR
-chown $USERNAME:$USERNAME $USER_CHALLENGES_DIR
+mkdir -p $USER_ADP_DIR
+chown $USERNAME:$USERNAME $USER_ADP_DIR
 
-# Create symbolic link to the challenges directory
-ln -s $CHALLENGES_DIR $USER_CHALLENGES_DIR/docker-challenges
-chown -h $USERNAME:$USERNAME $USER_CHALLENGES_DIR/docker-challenges
+# Create and copy challenges to the user's directory
+mkdir -p $USER_CHALLENGES_DIR
+cp -r $ADMIN_CHALLENGES_DIR/* $USER_CHALLENGES_DIR/
+chown -R $USERNAME:$USERNAME $USER_CHALLENGES_DIR
 
 # Copy Desktop shortcuts
 echo -e "${BLUE}Creating Desktop shortcuts for $USERNAME...${NC}"

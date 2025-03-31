@@ -163,6 +163,22 @@
         group: "{{ current_user }}"
         mode: '0755'
 
+    - name: Check for available terminal emulators
+      command: which {{ item }}
+      register: terminal_check
+      failed_when: false
+      changed_when: false
+      with_items:
+        - gnome-terminal
+        - xfce4-terminal
+        - x-terminal-emulator
+        - konsole
+        - xterm
+
+    - name: Set terminal executable variable
+      set_fact:
+        terminal_exec: "{{ terminal_check.results | selectattr('rc', 'eq', 0) | map(attribute='stdout') | first | default('xterm') }}"
+
     - name: Create Terminal shortcut on Desktop
       copy:
         dest: "/home/{{ current_user }}/Desktop/ADP_Terminal.desktop"
@@ -174,7 +190,7 @@
           Version=1.0
           Name=ADP Terminal
           Comment=Open Terminal in Azure Docker Playground directory
-          Exec=gnome-terminal --working-directory=/home/{{ current_user }}/azure-docker-playground
+          Exec={{ terminal_exec }} {% if terminal_exec == 'gnome-terminal' or terminal_exec == 'xfce4-terminal' %}--working-directory={% elif terminal_exec == 'konsole' %}-e 'cd {% else %}-e "cd {% endif %}/home/{{ current_user }}/azure-docker-playground{% if terminal_exec != 'gnome-terminal' and terminal_exec != 'xfce4-terminal' %} && bash"{% endif %}
           Icon=utilities-terminal
           Terminal=false
           Type=Application
@@ -189,9 +205,46 @@
         mode: '0644'
         remote_src: yes # Specify that the source is on the remote machine
 
-    - name: Create Firefox shortcut on Desktop
+    # Ensure Firefox is installed
+    - name: Install Firefox
+      apt:
+        name: firefox
+        state: present
+        update_cache: yes
+      register: firefox_install
+
+    # Alternative browsers if Firefox installation fails
+    - name: Install alternative browser if Firefox fails
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - chromium-browser
+        - epiphany-browser
+      when: firefox_install.failed is defined and firefox_install.failed
+      ignore_errors: yes
+
+    # Check which browsers are available
+    - name: Check for available browsers
+      command: which {{ item }}
+      register: browser_check
+      failed_when: false
+      changed_when: false
+      with_items:
+        - firefox
+        - chromium-browser
+        - epiphany-browser
+        - x-www-browser
+
+    - name: Set browser executable variable
+      set_fact:
+        browser_exec: "{{ browser_check.results | selectattr('rc', 'eq', 0) | map(attribute='stdout') | first | default('firefox') }}"
+        browser_name: "{{ 'Firefox' if 'firefox' in (browser_check.results | selectattr('rc', 'eq', 0) | map(attribute='stdout') | first | default('firefox')) else 'Web Browser' }}"
+        browser_icon: "{{ 'firefox' if 'firefox' in (browser_check.results | selectattr('rc', 'eq', 0) | map(attribute='stdout') | first | default('firefox')) else 'web-browser' }}"
+
+    - name: Create Browser shortcut on Desktop
       copy:
-        dest: "/home/{{ current_user }}/Desktop/Firefox.desktop"
+        dest: "/home/{{ current_user }}/Desktop/WebBrowser.desktop"
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
         mode: '0755'
@@ -199,10 +252,10 @@
           [Desktop Entry]
           Version=1.0
           Type=Application
-          Name=Firefox
+          Name={{ browser_name }}
           Comment=Access the Internet
-          Exec=firefox %u
-          Icon=firefox
+          Exec={{ browser_exec }} %u
+          Icon={{ browser_icon }}
           Terminal=false
           Categories=Network;WebBrowser;
 

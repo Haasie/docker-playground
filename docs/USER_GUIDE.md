@@ -59,7 +59,7 @@ The playground includes three progressive challenges to help you learn Docker:
 
 **Objective**: Start an Nginx web server in a Docker container and expose it on port 8080.
 
-**Location**: `~/docker-challenges/hello-container/`
+**Location**: `~/azure-docker-playground/docker-challenges/hello-container/`
 
 **Steps**:
 1. Navigate to the challenge directory
@@ -71,7 +71,7 @@ The playground includes three progressive challenges to help you learn Docker:
 
 **Objective**: Deploy a WordPress and MySQL stack using Docker Compose.
 
-**Location**: `~/docker-challenges/compose-master/`
+**Location**: `~/azure-docker-playground/docker-challenges/compose-master/`
 
 **Steps**:
 1. Navigate to the challenge directory
@@ -84,7 +84,7 @@ The playground includes three progressive challenges to help you learn Docker:
 
 **Objective**: Build a custom Docker image and push it to Azure Container Registry (ACR).
 
-**Location**: `~/docker-challenges/custom-image/`
+**Location**: `~/azure-docker-playground/docker-challenges/custom-image/`
 
 **Steps**:
 1. Navigate to the challenge directory
@@ -202,7 +202,7 @@ docker volume rm $(docker volume ls -q) 2>/dev/null || true
 docker system prune -a -f
 
 # Reset challenge directories
-rm -rf ~/docker-challenges/* 2>/dev/null || true
+rm -rf ~/azure-docker-playground/docker-challenges/* 2>/dev/null || true
 rm -rf ~/.docker-playground-progress 2>/dev/null || true
 rm -rf ~/completed-challenges 2>/dev/null || true
 
@@ -213,6 +213,8 @@ fi
 ```
 
 ### For Administrators
+
+#### Environment Reset
 
 Administrators can perform a complete environment reset using the provided script:
 
@@ -228,7 +230,28 @@ This script offers two reset options:
 - **Quick Reset**: Cleans Docker resources on the VM
 - **Full Reset**: Redeploys the VM from its original image
 
-The script will guide you through the process and provide options for resetting the Azure Container Registry as well.
+#### User Management
+
+Administrators can create additional user accounts for participants without sharing the `azureadmin` credentials:
+
+1. SSH into the VM via Azure Bastion as `azureadmin`
+2. Run the user creation script:
+
+```bash
+# Interactive mode (will prompt for username and password)
+sudo ~/azure-docker-playground/scripts/create-user.sh
+
+# Or non-interactive mode
+sudo ~/azure-docker-playground/scripts/create-user.sh username password
+```
+
+This will:
+
+- Create a new user account with the specified credentials
+- Set up their environment with all necessary permissions and shortcuts
+- Allow them to log in directly via Azure Bastion using their own credentials
+
+The reset script will guide you through the process and provide options for resetting the Azure Container Registry as well.
 
 ## Troubleshooting
 
