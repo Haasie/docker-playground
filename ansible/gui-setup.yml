@@ -196,14 +196,19 @@
           Type=Application
           Categories=Utility;Application;
 
-    - name: Copy USER_GUIDE.md to Desktop
+    - name: Check if USER_GUIDE.md exists in the repository
+      stat:
+        path: "{{ playbook_dir }}/../docs/USER_GUIDE.md"
+      register: user_guide_stat
+
+    - name: Copy USER_GUIDE.md to Desktop from playbook directory
       copy:
-        src: "/home/{{ current_user }}/azure-docker-playground/docs/USER_GUIDE.md"
+        src: "{{ playbook_dir }}/../docs/USER_GUIDE.md"
         dest: "/home/{{ current_user }}/Desktop/USER_GUIDE.md"
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
         mode: '0644'
-        remote_src: yes # Specify that the source is on the remote machine
+      when: user_guide_stat.stat.exists
 
     # Ensure Firefox is installed
     - name: Install Firefox
