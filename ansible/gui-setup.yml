@@ -34,9 +34,12 @@
         name: ubuntu-desktop-minimal
         state: present
 
-    - name: Install xRDP
+    - name: Install xRDP and X11 utilities
       apt:
-        name: xrdp
+        name:
+          - xrdp
+          - x11-xserver-utils
+          - xauth
         state: present
 
     - name: Add xrdp user to ssl-cert group for certificate access
@@ -45,6 +48,52 @@
         groups: ssl-cert
         append: yes
       notify: Restart xRDP
+      
+    # Create a script to fix X11 display issues
+    - name: Create X11 display fix script
+      copy:
+        dest: "/usr/local/bin/fix-x11-display.sh"
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Script to fix X11 display authorization issues in RDP sessions
+          
+          # Get the current display
+          DISPLAY_NUM=$(echo $DISPLAY | cut -d: -f2 | cut -d. -f1)
+          
+          # Create proper .Xauthority file
+          touch ~/.Xauthority
+          xauth generate $DISPLAY . trusted
+          xauth add ${HOSTNAME}/unix:${DISPLAY_NUM} MIT-MAGIC-COOKIE-1 $(mcookie)
+          
+          # Set proper permissions
+          chmod 600 ~/.Xauthority
+          
+          # Test if it works
+          xhost > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "X11 display authorization fixed successfully."
+          else
+            echo "Warning: X11 display authorization still has issues."
+          fi
+
+    # Add the fix script to .bashrc for all users
+    - name: Add X11 fix to .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        block: |
+          # Fix X11 display authorization for RDP sessions
+          if [ -n "$DISPLAY" ]; then
+            # Only run if we're in a graphical session
+            if ! xhost > /dev/null 2>&1; then
+              # Only run if there's an issue with X11 auth
+              /usr/local/bin/fix-x11-display.sh > /dev/null 2>&1
+            fi
+          fi
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - X11 DISPLAY FIX"
+        create: yes
 
     - name: Install Firefox
       apt:
