@@ -101,10 +101,15 @@ echo -e "${BLUE}ACR Login Server:${NC} $ACR_LOGIN_SERVER"
 
 echo -e "\n${BLUE}Next Steps:${NC}"
 
-echo -e "1. Remove public IP from your VM for enhanced security (recommended):"
+echo -e "1. Run the post-deployment setup script for automated configuration:"
+echo -e "   ${YELLOW}./scripts/post-deploy-setup.sh${NC}"
+
+echo -e "\nOr perform individual steps manually:"
+
+echo -e "2. Remove public IP from your VM for enhanced security (recommended):"
 echo -e "   ${YELLOW}./scripts/fix-remove-public-ip.sh $RESOURCE_GROUP $GUI_VM_NAME${NC}"
 
-echo -e "\n2. Set up a password for your VM user (required for RDP access via Bastion):"
+echo -e "\n3. Set up a password for your VM user (required for RDP access via Bastion):"
 echo -e "   ${YELLOW}./scripts/set-vm-password.sh $RESOURCE_GROUP $GUI_VM_NAME${NC}"
 
 echo -e "\n3. Connect to your VM via Azure Bastion (secure access method):"

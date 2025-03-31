@@ -120,9 +120,35 @@ You will be prompted for the following parameters:
 - **Admin Username**: The username for the GUI VM
 - **Admin Group Object ID**: The Object ID of the Azure AD group for administrators
 
+
 ## Post-Deployment Configuration
 
-After deployment, you need to configure the environment:
+After deployment, you need to configure the environment. You can use the automated post-deployment script or follow the manual steps below.
+
+### Automated Post-Deployment
+
+The project includes a post-deployment automation script that simplifies the configuration process:
+
+```bash
+# Navigate to the scripts directory
+cd scripts
+
+# Make the script executable (if needed)
+chmod +x post-deploy-setup.sh
+
+# Run the post-deployment setup script
+./post-deploy-setup.sh
+```
+
+The script provides a menu-driven interface that allows you to:
+
+1. Remove public IP from VM (Enhanced Security)
+2. Set VM password for RDP access
+3. Generate VM connection script for easy setup
+4. Get ACR credentials and update .env file
+5. Run all security enhancements at once
+
+### Manual Configuration
 
 ### Access the VM Securely
 
@@ -230,8 +256,11 @@ The Azure Container Registry is configured with admin access enabled. You need t
    
    # Method 1: Using environment variables directly
    docker login $ACR_LOGIN_SERVER -u $ACR_NAME -p $ACR_PASSWORD
+   ```
    
-   # Alternative Method 2: If Method 1 doesn't work due to special characters in password
+   Alternative Method 2 (if Method 1 doesn't work due to special characters in password):
+   
+   ```bash
    # Create a temporary password file (will be deleted after use)
    echo $ACR_PASSWORD > ~/temp_password.txt
    cat ~/temp_password.txt | docker login $ACR_LOGIN_SERVER -u $ACR_NAME --password-stdin
@@ -239,6 +268,7 @@ The Azure Container Registry is configured with admin access enabled. You need t
    ```
    
    > **Note**: Using `-p` directly on the command line is convenient for scripting but may expose the password in the command history. In production environments, consider using the more secure password-stdin method with proper handling.
+
 
 ### Start the Achievement API
 
@@ -250,6 +280,7 @@ docker build -t achievement-api .
 docker run -d -p 5050:5050 --name achievement-api achievement-api
 ```
 
+
 ## Backup and Monitoring
 
 ### Backup Strategy
@@ -260,6 +291,7 @@ To back up the environment, you should:
 2. **Back up the ACR**: Export container images if needed
 3. **Back up achievement data**: If using Azure Table Storage, it's automatically backed up
 
+
 ```bash
 # Create VM snapshot
 az snapshot create \
@@ -267,6 +299,7 @@ az snapshot create \
   --name <snapshot-name> \
   --source <vm-disk-id>
 ```
+
 
 ### Monitoring
 
@@ -286,30 +319,39 @@ Monitor the environment using Azure Monitor:
    - Ensure the VM is running
    - For RDP issues, see the [RDP Troubleshooting Guide](SECURE_ACCESS_GUIDE.md#troubleshooting)
 
+
 2. **Package Installation Failures**:
    - If you encounter dpkg interruption errors, the Ansible playbooks include pre-tasks to fix this automatically
    - If manual intervention is needed:
+   
      ```bash
      sudo dpkg --configure -a
      sudo apt update
      ```
 
+
 3. **Docker Permission Issues**:
    - Ensure your user is in the docker group:
+   
      ```bash
      sudo usermod -aG docker $USER
      # Log out and log back in for changes to take effect
      ```
 
+
 4. **ACR Authentication Issues**:
    - Verify the ACR admin credentials:
+   
      ```bash
      az acr login --name <acr-name> --username <acr-name> --password <acr-password>
      ```
+   
    - If needed, regenerate the admin password:
+   
      ```bash
      az acr credential renew --name <acr-name> --password-name password
      ```
+
 
 5. **Ansible Variable Issues**:
    - Ensure the USER environment variable is set before running Ansible playbooks:
@@ -320,6 +362,7 @@ Monitor the environment using Azure Monitor:
 ### Logs and Diagnostics
 
 Check these logs for troubleshooting:
+
 
 ```bash
 # Docker logs
@@ -334,6 +377,7 @@ cat ansible.log
 # Azure VM boot diagnostics (via Azure Portal)
 # Navigate to your VM > Boot diagnostics
 ```
+
 
 2. **Docker Issues**:
    - Check Docker service: `sudo systemctl status docker`
