@@ -19,6 +19,9 @@
     - name: Set current user variable
       set_fact:
         current_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+
+    - name: Set challenges directory path
+      set_fact:
         challenges_dir: "/home/{{ current_user }}/azure-docker-playground/docker-challenges"
 
     - name: Clone docker-challenges repository
