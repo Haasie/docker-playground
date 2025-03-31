@@ -104,18 +104,6 @@
         - { src: '../challenges/custom-image/validate.sh', dest: 'validate.sh' }
         - { src: '../challenges/custom-image/README.md', dest: 'README.md' }
 
-    # Ensure .env file exists for challenges
-    - name: Ensure .env file exists for challenges
-      template:
-        src: ../templates/acr-credentials.env.j2
-        dest: "{{ challenges_dir }}/.env"
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0600'
-      vars:
-        acr_name: "{{ ACR_NAME }}"
-        acr_login_server: "{{ ACR_LOGIN_SERVER }}"
-
     # Install challenge CLI tool
     - name: Ensure Python user directories exist
       file:
