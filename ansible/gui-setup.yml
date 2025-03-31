@@ -39,6 +39,13 @@
         name: xrdp
         state: present
 
+    - name: Add xrdp user to ssl-cert group for certificate access
+      user:
+        name: xrdp
+        groups: ssl-cert
+        append: yes
+      notify: Restart xRDP
+
     - name: Install Firefox
       apt:
         name: firefox
