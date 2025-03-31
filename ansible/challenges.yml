@@ -18,8 +18,17 @@
 
     - name: Set current user variable
       set_fact:
-        current_user: "{{ whoami_result.stdout }}"
-        challenges_dir: "/home/{{ whoami_result.stdout }}/docker-challenges"
+        current_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+        challenges_dir: "/home/{{ current_user }}/azure-docker-playground/docker-challenges"
+
+    - name: Clone docker-challenges repository
+      git:
+        repo: 'https://github.com/Haasie/docker-challenges.git'
+        dest: "{{ challenges_dir }}"
+        version: main
+        force: yes
+      become: no # Run as the current user
+
     - name: Create challenges directory
       file:
         path: "{{ challenges_dir }}"
@@ -95,13 +104,20 @@
         - { src: '../challenges/custom-image/validate.sh', dest: 'validate.sh' }
         - { src: '../challenges/custom-image/README.md', dest: 'README.md' }
 
-    # Install challenge CLI tool
-    - name: Check if challenge-cli directory exists
-      stat:
-        path: "{{ playbook_dir }}/../gamification/challenge-cli"
-      register: challenge_cli_dir
+    # Ensure .env file exists for challenges
+    - name: Ensure .env file exists for challenges
+      template:
+        src: ../templates/acr-credentials.env.j2
+        dest: "{{ challenges_dir }}/.env"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0600'
+      vars:
+        acr_name: "{{ ACR_NAME }}"
+        acr_login_server: "{{ ACR_LOGIN_SERVER }}"
 
-    - name: Create Python user directories with correct permissions
+    # Install challenge CLI tool
+    - name: Ensure Python user directories exist
       file:
         path: "{{ item }}"
         state: directory
@@ -110,51 +126,19 @@
         mode: '0755'
       loop:
         - "/home/{{ current_user }}/.local"
-        - "/home/{{ current_user }}/.local/bin"
         - "/home/{{ current_user }}/.local/lib"
-        - "/home/{{ current_user }}/.local/lib/python3.10"
-        - "/home/{{ current_user }}/.local/lib/python3.10/site-packages"
-      when: challenge_cli_dir.stat.exists
+        - "/home/{{ current_user }}/.local/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}"
+        - "/home/{{ current_user }}/.local/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages"
+        - "/home/{{ current_user }}/.local/bin"
 
-    - name: Install challenge CLI tool using pip
-      shell: "pip3 install --user {{ playbook_dir }}/../gamification/challenge-cli"
-      args:
-        executable: /bin/bash
-      become: false
-      register: pip_result
-      failed_when: pip_result.rc != 0 and 'already satisfied' not in pip_result.stderr
-      when: challenge_cli_dir.stat.exists
-
-    - name: Check if .bashrc exists
-      stat:
-        path: "/home/{{ current_user }}/.bashrc"
-      register: bashrc_file
-
-    - name: Create .bashrc if it doesn't exist
-      file:
-        path: "/home/{{ current_user }}/.bashrc"
-        state: touch
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0644'
-      when: not bashrc_file.stat.exists and challenge_cli_dir.stat.exists
-
-    - name: Add ~/.local/bin to PATH in .bashrc if not already there
-      lineinfile:
-        path: "/home/{{ current_user }}/.bashrc"
-        line: 'export PATH=$PATH:$HOME/.local/bin'
-        state: present
-        create: yes
-      when: challenge_cli_dir.stat.exists
-
-    # Set up environment variables for ACR access
-    - name: Create .env file with ACR info
-      template:
-        src: ../templates/env.j2
-        dest: "{{ challenges_dir }}/.env"
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0600'
+    - name: Install challenge CLI tool using pip3
+      shell:
+        cmd: "pip3 install --user -e ."
+        chdir: "{{ challenges_dir }}"
+      become: no # Run as the current user
+      register: pip_install_result
+      failed_when: "pip_install_result.rc != 0 and 'already satisfied' not in pip_install_result.stderr"
+      changed_when: pip_install_result.rc == 0 and 'Successfully installed' in pip_install_result.stdout
 
     # Create Desktop directory if it doesn't exist
     - name: Check if Desktop directory exists
@@ -177,14 +161,14 @@
         content: |
           [Desktop Entry]
           Version=1.0
-          Type=Application
           Name=Docker Challenges
-          Comment=Open Docker Challenges Folder
-          Exec=xfce4-terminal --working-directory={{ challenges_dir }}
+          Comment=Access Docker Security Challenges
+          Exec=gnome-terminal --working-directory={{ challenges_dir }}
           Icon=utilities-terminal
           Terminal=false
-          Categories=Development;
-        dest: "/home/{{ current_user }}/Desktop/docker-challenges.desktop"
+          Type=Application
+          Categories=Utility;Application;Development;
+        dest: "/home/{{ current_user }}/Desktop/Challenges.desktop"
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
-        mode: '0755'
+        mode: '0755' # Make it executable

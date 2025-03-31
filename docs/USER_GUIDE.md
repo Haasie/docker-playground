@@ -165,6 +165,17 @@ VS Code is pre-installed with Docker extensions. Use it to:
 - View and manage containers and images with the Docker extension
 - Edit code with full IDE features
 
+### Using Desktop Shortcuts
+
+Your desktop environment is pre-configured with shortcuts for common tools:
+
+*   **ADP Terminal**: Opens a terminal window directly in the `~/azure-docker-playground` directory.
+*   **Firefox**: Launches the Firefox web browser.
+*   **VS Code**: Opens the Visual Studio Code editor.
+*   **USER_GUIDE.md**: A copy of this guide for easy reference.
+
+**Important**: The first time you try to double-click a `.desktop` shortcut (like ADP Terminal, Firefox, or VS Code), you might need to mark it as trusted. Right-click the icon and look for an option like "Allow Launching" or "Trust and Launch". This only needs to be done once per shortcut.
+
 ## Resetting the Environment
 
 If you need to reset the Docker Playground to its initial state (for example, to allow a new user to start fresh):
