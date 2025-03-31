@@ -49,8 +49,8 @@
         append: yes
       notify: Restart xRDP
       
-    # Create a script to fix X11 display issues
-    - name: Create X11 display fix script
+    # Comprehensive X11 authorization fix
+    - name: Create improved X11 display fix script
       copy:
         dest: "/usr/local/bin/fix-x11-display.sh"
         owner: root
@@ -62,21 +62,42 @@
           
           # Get the current display
           DISPLAY_NUM=$(echo $DISPLAY | cut -d: -f2 | cut -d. -f1)
+          if [ -z "$DISPLAY_NUM" ]; then
+            # If DISPLAY is not set, try to detect it
+            DISPLAY_NUM=$(ps aux | grep -o ":[0-9]\+" | grep -o "[0-9]\+" | head -1)
+            if [ -n "$DISPLAY_NUM" ]; then
+              export DISPLAY=":$DISPLAY_NUM"
+            else
+              export DISPLAY=":0"
+            fi
+          fi
           
-          # Create proper .Xauthority file
+          # Backup existing .Xauthority if it exists
+          if [ -f ~/.Xauthority ]; then
+            cp ~/.Xauthority ~/.Xauthority.bak
+          fi
+          
+          # Create new .Xauthority file
           touch ~/.Xauthority
-          xauth generate $DISPLAY . trusted
-          xauth add ${HOSTNAME}/unix:${DISPLAY_NUM} MIT-MAGIC-COOKIE-1 $(mcookie)
-          
-          # Set proper permissions
           chmod 600 ~/.Xauthority
           
+          # Add authorization entries
+          xauth add $HOSTNAME/unix:$DISPLAY_NUM MIT-MAGIC-COOKIE-1 $(mcookie)
+          xauth add $HOSTNAME:$DISPLAY_NUM MIT-MAGIC-COOKIE-1 $(mcookie)
+          xauth add localhost/unix:$DISPLAY_NUM MIT-MAGIC-COOKIE-1 $(mcookie)
+          xauth add localhost:$DISPLAY_NUM MIT-MAGIC-COOKIE-1 $(mcookie)
+          
+          # Allow all local connections
+          xhost +local: > /dev/null 2>&1
+          
           # Test if it works
-          xhost > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
+          if xdpyinfo > /dev/null 2>&1; then
             echo "X11 display authorization fixed successfully."
+            exit 0
           else
             echo "Warning: X11 display authorization still has issues."
+            echo "Current DISPLAY=$DISPLAY"
+            exit 1
           fi
 
     # Add the fix script to .bashrc for all users
@@ -94,6 +115,30 @@
           fi
         marker: "# {mark} ANSIBLE MANAGED BLOCK - X11 DISPLAY FIX"
         create: yes
+        
+    # Add system-wide fix to /etc/profile.d
+    - name: Add system-wide X11 fix
+      copy:
+        dest: "/etc/profile.d/fix-x11-auth.sh"
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Fix X11 display authorization for RDP sessions
+          if [ -n "$DISPLAY" ]; then
+            # Allow local connections to X server
+            xhost +local: > /dev/null 2>&1 || true
+          fi
+          
+    # Modify xRDP startup script
+    - name: Configure xRDP startup script for X11 authorization
+      lineinfile:
+        path: /etc/xrdp/startwm.sh
+        insertbefore: '^exec '
+        line: '# Allow local connections to X server\nxhost +local: > /dev/null 2>&1 || true'
+        state: present
+      notify: Restart xRDP
 
     - name: Install Firefox
       apt:
