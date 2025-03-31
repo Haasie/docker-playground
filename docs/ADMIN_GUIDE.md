@@ -12,11 +12,7 @@ This guide provides comprehensive instructions for administrators to deploy, man
   - [Deployment Parameters](#deployment-parameters)
 - [Post-Deployment Configuration](#post-deployment-configuration)
   - [Access the VM Securely](#access-the-vm-securely)
-  - [Set Up the VM Environment](#set-up-the-vm-environment)
-  - [Set Up Docker and GUI](#set-up-docker-and-gui)
-  - [Set Up Docker Challenges](#set-up-docker-challenges)
-  - [Configure ACR Admin Password](#configure-acr-admin-password)
-  - [Start the Achievement API](#start-the-achievement-api)
+  - [Configure the VM Environment (via Generated Script)](#configure-the-vm-environment-via-generated-script)
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
   - [Logs and Diagnostics](#logs-and-diagnostics)
@@ -55,7 +51,8 @@ The repository is organized as follows:
 ```bash
 ├── ansible/            # Ansible playbooks for VM configuration
 │   ├── docker.yml      # Docker installation
-│   └── gui-setup.yml   # XFCE + xRDP setup
+│   ├── gui-setup.yml   # XFCE + xRDP setup
+│   └── challenges.yml  # Docker challenges setup
 ├── bicep/              # Bicep templates for Azure infrastructure
 │   ├── main.bicep      # Main deployment template
 │   ├── network.bicep   # VNet/Subnet/Bastion
@@ -90,17 +87,14 @@ Before deploying the Azure Docker Playground, ensure you have the following:
 
 ## Deployment
 
-The Azure Docker Playground can be deployed with a single command:
+The Azure Docker Playground can be deployed with a single command from the **project root directory**:
 
 ```bash
-# Navigate to the scripts directory
-cd scripts
+# Make the script executable (if needed)
+chmod +x scripts/deploy-azure-playground.sh
 
-# Make the script executable
-chmod +x deploy-azure-playground.sh
-
-# Run the deployment script
-./deploy-azure-playground.sh
+# Run the deployment script from the project root
+./scripts/deploy-azure-playground.sh
 ```
 
 The script will:
@@ -120,194 +114,67 @@ You will be prompted for the following parameters:
 - **Admin Username**: The username for the GUI VM
 - **Admin Group Object ID**: The Object ID of the Azure AD group for administrators
 
-
 ## Post-Deployment Configuration
 
-After deployment, you need to configure the environment. You can use the automated post-deployment script or follow the manual steps below.
+After the Azure infrastructure is deployed, some configuration steps are needed on your local machine and inside the new VM. The `post-deploy-setup.sh` script helps automate some of these tasks.
 
-### Automated Post-Deployment
+### Running the Post-Deployment Setup Script
 
-The project includes a post-deployment automation script that simplifies the configuration process:
+This script, run from your **local machine's project root directory**, provides a menu to perform essential post-deployment actions:
 
 ```bash
-# Navigate to the scripts directory
-cd scripts
-
 # Make the script executable (if needed)
-chmod +x post-deploy-setup.sh
+chmod +x scripts/post-deploy-setup.sh
 
-# Run the post-deployment setup script
-./post-deploy-setup.sh
+# Run the post-deployment setup script from the project root
+./scripts/post-deploy-setup.sh
 ```
 
-The script provides a menu-driven interface that allows you to:
+The script offers the following options:
 
-1. Remove public IP from VM (Enhanced Security)
-2. Set VM password for RDP access
-3. Generate VM connection script for easy setup
-4. Get ACR credentials and update .env file
-5. Run all security enhancements at once
+1.  **Remove public IP from VM:** Enhances security by making the VM inaccessible directly from the public internet. Access is then only possible via Azure Bastion.
+2.  **Set VM password for RDP access:** Configures a password for the admin user, which is required for RDP connections through Bastion.
+3.  **Generate VM connection script:** Creates a shell script (`vm-setup-YOUR_VM_NAME.sh`) containing all the commands needed to configure the environment *inside* the VM. **This generated script needs to be manually uploaded to the VM and executed there.**
+4.  **Get ACR credentials and update .env file:** Retrieves the admin password for the Azure Container Registry and saves it to an `acr-credentials.env` file. This file needs to be uploaded to the VM.
+5.  **Run all security enhancements:** Executes options 1 and 2 sequentially.
+6.  **Exit**
 
-### Manual Configuration
+It's recommended to run **Option 5** (or Options 1 and 2 individually) first to secure the VM. Then, use **Option 3** to generate the VM setup script.
 
 ### Access the VM Securely
 
-The deployment uses Azure Bastion with the Standard SKU for secure access to the Linux VM:
+The deployment uses Azure Bastion with the Standard SKU for secure access to the Linux VM. **After removing the public IP (Option 1 above), Bastion is the *only* way to connect.**
 
 1. Go to the Azure Portal
 2. Navigate to the deployed VM
 3. Click on "Connect" and select "Bastion"
-4. Enter the admin username and SSH key or password
+4. Enter the admin username and the password you set (using Option 2 above) or your SSH key.
 
-> **Note**: The Standard SKU for Azure Bastion is required for proper functionality with Linux VMs, providing features like native client support and file transfer capabilities.
+> **Note**: The Standard SKU for Azure Bastion is required for proper functionality with Linux VMs, providing features like native client support and file transfer capabilities. Bastion also allows you to upload files, which is necessary for the next step.
 
 For detailed instructions, see the [Secure Access Guide](SECURE_ACCESS_GUIDE.md).
 
-### Set Up the VM Environment
+### Configure the VM Environment (via Generated Script)
 
-Once connected to the VM via Bastion, follow these steps to set up the environment:
+Once connected to the VM via Bastion:
 
-```bash
-# Install prerequisites
-sudo apt update
-sudo apt install -y git ansible
+1.  **Upload the generated script:** Use the Bastion file upload feature (or `scp` if using native client SSH via Bastion) to transfer the `vm-setup-YOUR_VM_NAME.sh` script (generated by Option 3 of `post-deploy-setup.sh`) to the VM's home directory (e.g., `/home/azureadmin/`).
+2.  **Upload ACR credentials:** Also upload the `acr-credentials.env` file (generated by Option 4) to the VM's home directory.
+3.  **Execute the script:** Make the script executable and run it:
 
-# Clone the repository
-git clone https://github.com/Haasie/docker-playground.git ~/azure-docker-playground
-cd ~/azure-docker-playground
-```
+    ```bash
+    chmod +x vm-setup-YOUR_VM_NAME.sh
+    ./vm-setup-YOUR_VM_NAME.sh
+    ```
 
-### Set Up Docker and GUI
+This script performs the necessary setup steps *inside the VM*:
+*   Installs prerequisites (`git`, `ansible`).
+*   Clones the `docker-playground` repository into the VM's home directory (`~/azure-docker-playground`).
+*   Installs Docker using the `ansible/docker.yml` playbook.
+*   Sets up the XFCE GUI environment and xRDP using the `ansible/gui-setup.yml` playbook.
+*   Runs the `./scripts/setup-challenges.sh` script to configure the Docker challenges, using the ACR credentials from the uploaded `.env` file (the script expects to find `acr-credentials.env` and rename it).
 
-Install Docker and configure the GUI environment:
-
-```bash
-# Set up the environment
-export USER=$(whoami)  # Ensure USER environment variable is set
-
-# Install Docker and tools
-ansible-playbook -i localhost, -c local ansible/docker.yml
-
-# Set up GUI environment with XFCE and xRDP
-ansible-playbook -i localhost, -c local ansible/gui-setup.yml
-```
-
-### Set Up Docker Challenges
-
-After setting up the basic environment, deploy the Docker challenges:
-
-```bash
-# Navigate to the project root directory
-cd ~/azure-docker-playground
-
-# Make the script executable (if needed)
-chmod +x scripts/setup-challenges.sh
-
-# Run the setup script with your ACR details
-./scripts/setup-challenges.sh <acr-name> <acr-login-server>
-```
-
-Replace `<acr-name>` and `<acr-login-server>` with the values from your deployment. For example:
-
-```bash
-./scripts/setup-challenges.sh adpdevacr adpdevacr.azurecr.io
-```
-
-Alternatively, you can run the helper script without arguments and it will prompt you for the ACR information:
-
-```bash
-./scripts/setup-challenges.sh
-```
-
-> **Note**: The script must be run from the project root directory to correctly locate the Ansible playbooks.
-
-### Configure ACR Admin Password
-
-The Azure Container Registry is configured with admin access enabled. You need to retrieve the admin password and update the environment file:
-
-1. Get the ACR admin password from the Azure Portal or using Azure CLI:
-
-   ```bash
-   # Using Azure CLI (if installed and logged in)
-   ACR_PASSWORD=$(az acr credential show --name <acr-name> --query "passwords[0].value" -o tsv)
-   
-   # Or get it from the Azure Portal:
-   # - Go to the Azure Portal
-   # - Navigate to your ACR resource
-   # - Go to 'Access keys' under 'Settings'
-   # - Copy the password value
-   ```
-
-2. Update the .env file with the password:
-
-   ```bash
-   # Edit the .env file
-   nano ~/docker-challenges/.env
-   
-   # Update the ACR_PASSWORD line with the password you retrieved
-   # Save and exit (Ctrl+O, Enter, Ctrl+X)
-   ```
-
-3. Test the ACR login:
-
-   ```bash
-   # Test login using the credentials in the .env file
-   source ~/docker-challenges/.env
-   
-   # Method 1: Using environment variables directly
-   docker login $ACR_LOGIN_SERVER -u $ACR_NAME -p $ACR_PASSWORD
-   ```
-   
-   Alternative Method 2 (if Method 1 doesn't work due to special characters in password):
-   
-   ```bash
-   # Create a temporary password file (will be deleted after use)
-   echo $ACR_PASSWORD > ~/temp_password.txt
-   cat ~/temp_password.txt | docker login $ACR_LOGIN_SERVER -u $ACR_NAME --password-stdin
-   rm ~/temp_password.txt
-   ```
-   
-   > **Note**: Using `-p` directly on the command line is convenient for scripting but may expose the password in the command history. In production environments, consider using the more secure password-stdin method with proper handling.
-
-
-### Start the Achievement API
-
-Start the achievement API container:
-
-```bash
-cd ~/azure-docker-playground/gamification/achievement-api
-docker build -t achievement-api .
-docker run -d -p 5050:5050 --name achievement-api achievement-api
-```
-
-
-## Backup and Monitoring
-
-### Backup Strategy
-
-To back up the environment, you should:
-
-1. **Back up the VM**: Create a snapshot of the GUI VM disk
-2. **Back up the ACR**: Export container images if needed
-3. **Back up achievement data**: If using Azure Table Storage, it's automatically backed up
-
-
-```bash
-# Create VM snapshot
-az snapshot create \
-  --resource-group <resource-group> \
-  --name <snapshot-name> \
-  --source <vm-disk-id>
-```
-
-
-### Monitoring
-
-Monitor the environment using Azure Monitor:
-
-1. Set up alerts for VM metrics (CPU, memory)
-2. Monitor ACR usage and quotas
-3. Check VM auto-shutdown schedule
+After the script finishes, the VM environment is ready for users.
 
 ## Troubleshooting
 
@@ -319,7 +186,6 @@ Monitor the environment using Azure Monitor:
    - Ensure the VM is running
    - For RDP issues, see the [RDP Troubleshooting Guide](SECURE_ACCESS_GUIDE.md#troubleshooting)
 
-
 2. **Package Installation Failures**:
    - If you encounter dpkg interruption errors, the Ansible playbooks include pre-tasks to fix this automatically
    - If manual intervention is needed:
@@ -329,7 +195,6 @@ Monitor the environment using Azure Monitor:
      sudo apt update
      ```
 
-
 3. **Docker Permission Issues**:
    - Ensure your user is in the docker group:
    
@@ -337,7 +202,6 @@ Monitor the environment using Azure Monitor:
      sudo usermod -aG docker $USER
      # Log out and log back in for changes to take effect
      ```
-
 
 4. **ACR Authentication Issues**:
    - Verify the ACR admin credentials:
@@ -351,7 +215,6 @@ Monitor the environment using Azure Monitor:
      ```bash
      az acr credential renew --name <acr-name> --password-name password
      ```
-
 
 5. **Ansible Variable Issues**:
    - Ensure the USER environment variable is set before running Ansible playbooks:
@@ -377,17 +240,6 @@ cat ansible.log
 # Azure VM boot diagnostics (via Azure Portal)
 # Navigate to your VM > Boot diagnostics
 ```
-
-
-2. **Docker Issues**:
-   - Check Docker service: `sudo systemctl status docker`
-   - Verify user is in the docker group: `groups`
-   - Restart Docker: `sudo systemctl restart docker`
-
-3. **ACR Access Issues**:
-   - Verify private endpoint connection
-   - Check RBAC permissions
-   - Test ACR login: `az acr login --name <acr-name>`
 
 ## Maintenance
 
