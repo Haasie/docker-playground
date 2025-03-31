@@ -67,11 +67,11 @@ read -p "Select an option (1-6): " OPTION
 case $OPTION in
     1)
         echo -e "\n${BLUE}Removing public IP from VM...${NC}"
-        ./fix-remove-public-ip.sh $RESOURCE_GROUP $GUI_VM_NAME
+        scripts/fix-remove-public-ip.sh $RESOURCE_GROUP $GUI_VM_NAME
         ;;
     2)
         echo -e "\n${BLUE}Setting VM password...${NC}"
-        ./set-vm-password.sh $RESOURCE_GROUP $GUI_VM_NAME
+        scripts/set-vm-password.sh $RESOURCE_GROUP $GUI_VM_NAME
         ;;
     3)
         echo -e "\n${BLUE}Generating VM connection script...${NC}"
@@ -154,10 +154,10 @@ EOF
         echo -e "\n${BLUE}Running all security enhancements...${NC}"
         
         echo -e "\n${BLUE}1. Removing public IP from VM...${NC}"
-        ./fix-remove-public-ip.sh $RESOURCE_GROUP $GUI_VM_NAME
+        scripts/fix-remove-public-ip.sh $RESOURCE_GROUP $GUI_VM_NAME
         
         echo -e "\n${BLUE}2. Setting VM password...${NC}"
-        ./set-vm-password.sh $RESOURCE_GROUP $GUI_VM_NAME
+        scripts/set-vm-password.sh $RESOURCE_GROUP $GUI_VM_NAME
         
         echo -e "\n${GREEN}All security enhancements completed.${NC}"
         ;;
