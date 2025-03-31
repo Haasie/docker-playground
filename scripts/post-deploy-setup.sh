@@ -118,6 +118,10 @@ echo -e "\n\${BLUE}Setting up Docker challenges...${NC}"
 
 echo -e "\n\${GREEN}Setup completed successfully!${NC}"
 echo -e "\${BLUE}You can now access the Docker Playground environment.${NC}"
+
+# Clear bash history for security
+echo -e "\n\${BLUE}Clearing bash history for security...${NC}"
+cat /dev/null > ~/.bash_history && history -c
 EOF
 
         chmod +x $VM_SETUP_SCRIPT
