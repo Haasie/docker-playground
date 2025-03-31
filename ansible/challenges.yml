@@ -3,35 +3,23 @@
 - name: Deploy Docker challenges
   hosts: all
   become: true
-  vars:
-    acr_name: "{{ acr_name }}"
-    acr_login_server: "{{ acr_login_server }}"
+  gather_facts: yes
+  
   tasks:
-    - name: Debug ansible_user and USER environment variable
-      debug:
-        msg: "ansible_user: {{ ansible_user | default('not set') }}, USER env: {{ lookup('env', 'USER') | default('not set') }}, HOME env: {{ lookup('env', 'HOME') | default('not set') }}"
-
-    - name: Get effective username
+    # Get the current user reliably
+    - name: Get current username
       command: whoami
       register: whoami_result
       changed_when: false
+      become: no
 
-    - name: Set current user variable
+    # Set variables based on the username
+    - name: Set user variables
       set_fact:
-        current_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+        current_user: "{{ whoami_result.stdout }}"
+        challenges_dir: "/home/{{ whoami_result.stdout }}/azure-docker-playground/docker-challenges"
 
-    - name: Set challenges directory path
-      set_fact:
-        challenges_dir: "/home/{{ current_user }}/azure-docker-playground/docker-challenges"
-
-    - name: Clone docker-challenges repository
-      git:
-        repo: 'https://github.com/Haasie/docker-challenges.git'
-        dest: "{{ challenges_dir }}"
-        version: main
-        force: yes
-      become: no # Run as the current user
-
+    # Ensure the challenges directory exists
     - name: Create challenges directory
       file:
         path: "{{ challenges_dir }}"
@@ -40,96 +28,15 @@
         group: "{{ current_user }}"
         mode: '0755'
 
-    # Challenge 1: Hello Container
-    - name: Create Hello Container challenge directory
-      file:
-        path: "{{ challenges_dir }}/hello-container"
-        state: directory
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-
-    - name: Copy Hello Container files
+    # Copy all challenge files at once from the local repository
+    - name: Copy all challenge files
       copy:
-        src: "{{ item.src }}"
-        dest: "{{ challenges_dir }}/hello-container/{{ item.dest }}"
+        src: "{{ playbook_dir }}/../challenges/"
+        dest: "{{ challenges_dir }}/"
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
         mode: '0755'
-      loop:
-        - { src: '../challenges/hello-container/Dockerfile', dest: 'Dockerfile' }
-        - { src: '../challenges/hello-container/index.html', dest: 'index.html' }
-        - { src: '../challenges/hello-container/validate.sh', dest: 'validate.sh' }
-        - { src: '../challenges/hello-container/README.md', dest: 'README.md' }
-
-    # Challenge 2: Compose Master
-    - name: Create Compose Master challenge directory
-      file:
-        path: "{{ challenges_dir }}/compose-master"
-        state: directory
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-
-    - name: Copy Compose Master files
-      copy:
-        src: "{{ item.src }}"
-        dest: "{{ challenges_dir }}/compose-master/{{ item.dest }}"
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-      loop:
-        - { src: '../challenges/compose-master/docker-compose.yml', dest: 'docker-compose.yml' }
-        - { src: '../challenges/compose-master/validate.sh', dest: 'validate.sh' }
-        - { src: '../challenges/compose-master/README.md', dest: 'README.md' }
-
-    # Challenge 3: Custom Image
-    - name: Create Custom Image challenge directory
-      file:
-        path: "{{ challenges_dir }}/custom-image"
-        state: directory
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-
-    - name: Copy Custom Image files
-      copy:
-        src: "{{ item.src }}"
-        dest: "{{ challenges_dir }}/custom-image/{{ item.dest }}"
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-      loop:
-        - { src: '../challenges/custom-image/Dockerfile', dest: 'Dockerfile' }
-        - { src: '../challenges/custom-image/app.py', dest: 'app.py' }
-        - { src: '../challenges/custom-image/requirements.txt', dest: 'requirements.txt' }
-        - { src: '../challenges/custom-image/build-and-push.sh', dest: 'build-and-push.sh' }
-        - { src: '../challenges/custom-image/validate.sh', dest: 'validate.sh' }
-        - { src: '../challenges/custom-image/README.md', dest: 'README.md' }
-
-    # Install challenge CLI tool
-    - name: Ensure Python user directories exist
-      file:
-        path: "{{ item }}"
-        state: directory
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-      loop:
-        - "/home/{{ current_user }}/.local"
-        - "/home/{{ current_user }}/.local/lib"
-        - "/home/{{ current_user }}/.local/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}"
-        - "/home/{{ current_user }}/.local/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages"
-        - "/home/{{ current_user }}/.local/bin"
-
-    - name: Install challenge CLI tool using pip3
-      shell:
-        cmd: "pip3 install --user -e ."
-        chdir: "{{ challenges_dir }}"
-      become: no # Run as the current user
-      register: pip_install_result
-      failed_when: "pip_install_result.rc != 0 and 'already satisfied' not in pip_install_result.stderr"
-      changed_when: pip_install_result.rc == 0 and 'Successfully installed' in pip_install_result.stdout
+        directory_mode: '0755'
 
     # Create Desktop directory if it doesn't exist
     - name: Check if Desktop directory exists
