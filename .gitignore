@@ -23,7 +23,7 @@ wheels/
 .installed.cfg
 *.egg
 acr-credentials.env
-vm-setup-*.sh
+
 
 # Virtual Environment
 venv/
