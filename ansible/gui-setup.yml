@@ -29,9 +29,12 @@
         update_cache: yes
         cache_valid_time: 3600
 
-    - name: Install Ubuntu Desktop (minimal installation)
+    # Install MATE desktop instead of XFCE
+    - name: Install MATE desktop environment (known to work well with RDP)
       apt:
-        name: ubuntu-desktop-minimal
+        name:
+          - ubuntu-mate-desktop
+          - mate-desktop-environment
         state: present
 
     - name: Install xRDP and X11 utilities
@@ -207,7 +210,7 @@
             - { regexp: '^key_file=', line: 'key_file=/etc/xrdp/key.pem' }
           notify: Restart xRDP
 
-        - name: Fix black screen issue
+        - name: Fix black screen issue with MATE desktop
           copy:
             content: |
               #!/bin/sh
@@ -215,15 +218,11 @@
                 . /etc/default/locale
                 export LANG LANGUAGE
               fi
-              startxfce4
+              # Use MATE desktop instead of XFCE
+              mate-session
             dest: /etc/xrdp/startwm.sh
             mode: '0755'
           notify: Restart xRDP
-
-        - name: Install XFCE desktop
-          apt:
-            name: xfce4
-            state: present
 
     - name: Configure firewall
       block:
@@ -263,6 +262,7 @@
       failed_when: false
       changed_when: false
       with_items:
+        - mate-terminal
         - gnome-terminal
         - xfce4-terminal
         - x-terminal-emulator
@@ -385,6 +385,27 @@
         - "ADP_Terminal.desktop"
         - "WebBrowser.desktop"
         - "VSCode.desktop"
+      ignore_errors: yes
+      
+    # Configure MATE desktop for RDP compatibility
+    - name: Configure MATE desktop settings for RDP
+      become: yes
+      become_user: "{{ current_user }}"
+      shell: |
+        # Enable desktop icons
+        gsettings set org.mate.background show-desktop-icons true || true
+        
+        # Set double-click behavior
+        gsettings set org.mate.Marco.general double-click-titlebar 'toggle_maximize' || true
+        gsettings set org.mate.caja.preferences click-policy 'double' || true
+        
+        # Set file browser preferences
+        gsettings set org.mate.caja.desktop home-icon-visible true || true
+        
+        # Ensure desktop shortcuts are trusted
+        find /home/{{ current_user }}/Desktop -name "*.desktop" -exec gio set {} "metadata::trusted" yes \; || true
+      args:
+        executable: /bin/bash
       ignore_errors: yes
 
   handlers:
