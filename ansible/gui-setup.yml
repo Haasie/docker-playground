@@ -131,39 +131,14 @@
             xhost +local: > /dev/null 2>&1 || true
           fi
           
-    # Modify xRDP startup script
+    # Modify xRDP startup script - simpler approach
     - name: Configure xRDP startup script for X11 authorization
       lineinfile:
         path: /etc/xrdp/startwm.sh
         insertbefore: '^exec '
-        line: '# Allow local connections to X server\nxhost +local: > /dev/null 2>&1 || true\n# Run the comprehensive fix script\n/usr/local/bin/fix-x11-display.sh > /dev/null 2>&1 || true'
+        line: '# Allow local connections to X server\nxhost +local: > /dev/null 2>&1 || true'
         state: present
       notify: Restart xRDP
-      
-    # Add X11 fix to XFCE autostart
-    - name: Create XFCE autostart directory
-      file:
-        path: "/home/{{ current_user }}/.config/autostart"
-        state: directory
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-        
-    - name: Add X11 fix to XFCE autostart
-      copy:
-        dest: "/home/{{ current_user }}/.config/autostart/fix-x11-display.desktop"
-        owner: "{{ current_user }}"
-        group: "{{ current_user }}"
-        mode: '0755'
-        content: |
-          [Desktop Entry]
-          Type=Application
-          Name=Fix X11 Display
-          Comment=Fix X11 display authorization for RDP sessions
-          Exec=/usr/local/bin/fix-x11-display.sh
-          Terminal=false
-          Hidden=false
-          X-GNOME-Autostart-enabled=true
 
     - name: Install Firefox
       apt:
@@ -309,14 +284,11 @@
           Version=1.0
           Name=ADP Terminal
           Comment=Open Terminal in Azure Docker Playground directory
-          Exec=sh -c '{{ terminal_exec }} {% if terminal_exec == "gnome-terminal" or terminal_exec == "xfce4-terminal" %}--working-directory={% elif terminal_exec == "konsole" %}-e "cd {% else %}-e "cd {% endif %}/home/{{ current_user }}/azure-docker-playground{% if terminal_exec != "gnome-terminal" and terminal_exec != "xfce4-terminal" %} && bash"{% endif %}'
+          Exec={{ terminal_exec }}
           Icon=utilities-terminal
           Terminal=false
           Type=Application
-          StartupNotify=true
           Categories=Utility;Application;
-          MimeType=application/x-terminal-emulator;
-          Actions=New
 
     - name: Check if USER_GUIDE.md exists in the repository
       stat:
@@ -381,13 +353,10 @@
           Type=Application
           Name={{ browser_name }}
           Comment=Access the Internet
-          Exec=sh -c '{{ browser_exec }} %u || xdg-open http://localhost'
+          Exec={{ browser_exec }}
           Icon={{ browser_icon }}
           Terminal=false
-          StartupNotify=true
-          MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;x-scheme-handler/http;x-scheme-handler/https;
           Categories=Network;WebBrowser;
-          Actions=NewWindow;NewPrivateWindow;
 
     - name: Create VS Code shortcut on Desktop
       copy:
@@ -407,29 +376,16 @@
           StartupNotify=true
           Categories=Utility;TextEditor;Development;IDE;
           
-    # Ensure desktop files are properly registered and executable
-    - name: Register desktop files with the system
-      shell: |
-        # Make all desktop files executable
-        find /home/{{ current_user }}/Desktop -name "*.desktop" -exec chmod +x {} \;
-        
-        # Update desktop database
-        update-desktop-database /usr/share/applications || true
-        
-        # Set proper MIME associations
-        if [ -f /usr/bin/xdg-mime ]; then
-          xdg-mime default WebBrowser.desktop text/html || true
-          xdg-mime default WebBrowser.desktop x-scheme-handler/http || true
-          xdg-mime default WebBrowser.desktop x-scheme-handler/https || true
-        fi
-        
-        # Fix permissions on .Xauthority if it exists
-        if [ -f /home/{{ current_user }}/.Xauthority ]; then
-          chown {{ current_user }}:{{ current_user }} /home/{{ current_user }}/.Xauthority
-          chmod 600 /home/{{ current_user }}/.Xauthority
-        fi
-      args:
-        executable: /bin/bash
+    # Make desktop files executable
+    - name: Make desktop files executable
+      file:
+        path: "/home/{{ current_user }}/Desktop/{{ item }}"
+        mode: '0755'
+      with_items:
+        - "ADP_Terminal.desktop"
+        - "WebBrowser.desktop"
+        - "VSCode.desktop"
+      ignore_errors: yes
 
   handlers:
     - name: Restart xRDP
