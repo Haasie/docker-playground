@@ -355,22 +355,29 @@
       ignore_errors: yes
       
     # Configure LXDE for RDP compatibility
-    - name: Configure LXDE for RDP compatibility
-      become: yes
-      become_user: "{{ current_user }}"
-      shell: |
-        # Create LXDE config directory if it doesn't exist
-        mkdir -p /home/{{ current_user }}/.config/lxsession/LXDE
-        
-        # Set desktop preferences
-        echo "[Session]" > /home/{{ current_user }}/.config/lxsession/LXDE/desktop.conf
-        echo "window_manager=openbox" >> /home/{{ current_user }}/.config/lxsession/LXDE/desktop.conf
-        echo "[GTK]" >> /home/{{ current_user }}/.config/lxsession/LXDE/desktop.conf
-        echo "sNet/ThemeName=Clearlooks" >> /home/{{ current_user }}/.config/lxsession/LXDE/desktop.conf
-        echo "sNet/IconThemeName=nuoveXT2" >> /home/{{ current_user }}/.config/lxsession/LXDE/desktop.conf
-        
-        # Make desktop files executable
-        find /home/{{ current_user }}/Desktop -name "*.desktop" -exec chmod +x {} \;
+    - name: Create LXDE config directory
+      file:
+        path: "/home/{{ current_user }}/.config/lxsession/LXDE"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+
+    - name: Create LXDE desktop.conf file
+      copy:
+        dest: "/home/{{ current_user }}/.config/lxsession/LXDE/desktop.conf"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0644'
+        content: |
+          [Session]
+          window_manager=openbox
+          [GTK]
+          sNet/ThemeName=Clearlooks
+          sNet/IconThemeName=nuoveXT2
+
+    - name: Make desktop files executable
+      shell: find /home/{{ current_user }}/Desktop -name "*.desktop" -exec chmod +x {} \;
       args:
         executable: /bin/bash
       ignore_errors: yes
