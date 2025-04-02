@@ -11,14 +11,36 @@ services:
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress_password
       WORDPRESS_DB_NAME: wordpress
+      # Additional WordPress configuration
+      WORDPRESS_TABLE_PREFIX: wp_
+      # Set these for automated WordPress setup
+      # WORDPRESS_ADMIN_USER: admin
+      # WORDPRESS_ADMIN_PASSWORD: secure_password
+      # WORDPRESS_ADMIN_EMAIL: admin@example.com
+      # WORDPRESS_SITE_URL: http://localhost
+      # WORDPRESS_SITE_TITLE: "My WordPress Site"
     volumes:
       - wordpress_data:/var/www/html
+      # Optional: Mount custom themes and plugins
+      # - ./custom-themes:/var/www/html/wp-content/themes
+      # - ./custom-plugins:/var/www/html/wp-content/plugins
     depends_on:
       - db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - wordpress_network
 
   db:
     image: mysql:5.7
     restart: always
+    # Uncomment to expose MySQL port for direct access
+    # ports:
+    #   - "3306:3306"
     environment:
       MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpress
@@ -26,6 +48,34 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
     volumes:
       - db_data:/var/lib/mysql
+      # Optional: Mount initialization scripts
+      # - ./mysql-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "wordpress", "-pwordpress_password"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - wordpress_network
+
+  # Optional: Add phpMyAdmin for database management
+  # phpmyadmin:
+  #   image: phpmyadmin/phpmyadmin
+  #   restart: always
+  #   ports:
+  #     - "8080:80"
+  #   environment:
+  #     PMA_HOST: db
+  #     MYSQL_ROOT_PASSWORD: wordpress_password
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - wordpress_network
+
+networks:
+  wordpress_network:
+    driver: bridge
 
 volumes:
   wordpress_data:
