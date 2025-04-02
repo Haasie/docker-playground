@@ -32,7 +32,7 @@ This guide provides comprehensive instructions for administrators to deploy, con
 
 1. **[LOCAL]** Clone the repository:
    ```bash
-   git clone https://github.com/your-org/docker-playground.git
+   git clone https://github.com/your-org/docker-playground.git # Replace with your repo URL
    cd docker-playground
    ```
 
@@ -60,86 +60,113 @@ This guide provides comprehensive instructions for administrators to deploy, con
 
 ## Production Deployment
 
-### Pre-Deployment Cleanup
+This section outlines the streamlined 5-step process to deploy the Azure Docker Playground environment using the consolidated scripts.
 
-1. **[LOCAL]** Run the cleanup script to remove unnecessary files and prepare for production:
-   ```bash
-   ./cleanup.sh
-   ```
+### Step 1: Prerequisites & Clone Repository [LOCAL]
 
-2. **[LOCAL]** Verify the cleanup was successful:
-   ```bash
-   # Check for any remaining temporary files
-   find . -name "*.tmp" -o -name "*.bak" -o -name "*.log"
-   ```
+1.  Ensure you have the following installed on your **local machine**:
+    *   Azure CLI (version 2.40.0 or later)
+    *   Git
+    *   An SSH client and an SSH key pair (e.g., `~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub`). If you don't have one, generate it using `ssh-keygen -t rsa -b 4096`.
+2.  Clone the repository:
+    ```bash
+    # [LOCAL] Clone the repository
+    git clone https://github.com/your-org/docker-playground.git # Replace with your repo URL
+    cd docker-playground
+    ```
+3.  Create or update the `.env` file in the root of the cloned repository. Make sure to replace `"YOUR_SSH_KEY_HERE"` with the *contents* of your public SSH key file (`~/.ssh/id_rsa.pub`).
+    ```bash
+    # [LOCAL] Create/update .env file
+    cat > .env << EOF
+    RESOURCE_GROUP=adp-rg         # Choose a name for your resource group
+    LOCATION=westeurope         # Choose an Azure region
+    ENVIRONMENT_NAME=prod         # Environment name (e.g., prod, staging)
+    ADMIN_USERNAME=azureadmin     # Initial admin username for the VM
+    ADMIN_SSH_KEY="$(cat ~/.ssh/id_rsa.pub 2>/dev/null || echo "YOUR_SSH_KEY_HERE")"
+    EOF
+    ```
+    *   Review and adjust other variables in `.env` if needed.
 
-### Infrastructure Deployment
+### Step 2: Deploy Azure Infrastructure & Initial VM Config [LOCAL]
 
-1. **[LOCAL]** Deploy the Azure resources:
-   ```bash
-   # Login to Azure
-   az login
-   
-   # Create resource group if it doesn't exist
-   az group create --name $RESOURCE_GROUP --location $LOCATION
-   
-   # Deploy the VM and related resources
-   ./scripts/deploy-infrastructure.sh
-   ```
+1.  Run the main deployment script from your **local machine**:
+    ```bash
+    # [LOCAL] Login to Azure if needed
+    az login
 
-2. **[LOCAL]** Configure the VM environment:
-   ```bash
-   # Run post-deployment setup
-   ./scripts/post-deploy-setup.sh
-   ```
-   - Select option 2 to set VM password for RDP access
-   - Enter the admin username (default: azureadmin)
-   - Set a strong password
-   - Select option 4 to get ACR credentials and update .env file
+    # [LOCAL] Run the deployment script
+    ./scripts/deploy-azure-playground.sh
+    ```
+2.  This script will:
+    *   Create the Azure resource group if it doesn't exist.
+    *   Deploy all necessary Azure resources (VM, VNet, Bastion, ACR) using Bicep.
+    *   Retrieve ACR credentials and save them to the `.env` file.
+    *   **Remove the Public IP address** from the VM for security.
+    *   **Prompt you to set a password** for the `ADMIN_USERNAME`. This password is required for RDP connections via Azure Bastion.
+3.  Note the outputs from the script, especially the VM name and admin username.
 
-3. **[LOCAL]** Prepare to upload the ACR credentials to the VM:
+### Step 3: Connect to VM & Transfer Project Files [LOCAL/PORTAL]
 
-   The post-deploy-setup.sh script creates an `acr-credentials.env` file that needs to be uploaded to the VM.
+1.  Connect to the deployed VM using **Azure Bastion** from the Azure Portal:
+    *   Navigate to the Azure Portal (https://portal.azure.com).
+    *   Find the Virtual Machine resource deployed in Step 2.
+    *   Click "Connect" -> "Bastion".
+    *   Select Connection Type: **RDP**.
+    *   Enter the `ADMIN_USERNAME` (e.g., `azureadmin`).
+    *   Enter the **password you set** during Step 2.
+    *   Click "Connect".
+2.  Once connected to the VM's desktop environment via Bastion, use the **Bastion file upload feature**:
+    *   Click the "Upload file" icon in the Bastion session toolbar.
+    *   Select the **entire `docker-playground` directory** from your local machine.
+    *   This will upload the project files (including `ansible/`, `scripts/`, `.env`, etc.) to the admin user's home directory on the VM (e.g., `/home/azureadmin/docker-playground`).
 
-   **To upload via Azure Bastion:**
-   1. Go to the Azure Portal (https://portal.azure.com)
-   2. Navigate to the VM resource (`adp-dev-gui-vm`)
-   3. Click on "Connect" and select "Bastion"
-   4. Enter the username (`azureadmin`) and password
-   5. Click "Connect"
-   6. Once connected, click the "Upload file" icon in the Bastion toolbar
-   7. Select the `acr-credentials.env` file from your local machine
-   8. The file will be uploaded to `/home/azureadmin/`
+### Step 4: Configure VM Environment [VM]
 
-4. **[VM]** Connect to the VM via Azure Bastion and set up challenges:
+Perform these commands **inside the VM** via the Bastion RDP session:
 
-   **To connect via Azure Bastion:**
-   1. Go to the Azure Portal (https://portal.azure.com)
-   2. Navigate to the VM resource (`adp-dev-gui-vm`)
-   3. Click on "Connect" and select "Bastion"
-   4. Enter the username (`azureadmin`) and password you set earlier
-   5. Click "Connect"
+1.  Open a terminal on the VM (e.g., using the Desktop shortcut if available, or Applications -> System Tools -> LXTerminal).
+2.  Navigate to the uploaded project directory:
+    ```bash
+    # [VM] Change to the project directory
+    cd ~/docker-playground
+    ```
+3.  Make the Ansible runner script executable:
+    ```bash
+    # [VM] Make script executable
+    chmod +x scripts/run-ansible-local.sh
+    ```
+4.  Run the Ansible playbooks sequentially using the local runner script. This script handles running Ansible correctly on the VM itself.
+    ```bash
+    # [VM] Install Docker
+    ./scripts/run-ansible-local.sh ansible/docker.yml
 
-5. **[VM]** Once connected to the VM, set up the Docker challenges:
-   ```bash
-   # Move to the azure-docker-playground directory
-   cd ~/azure-docker-playground
-   
-   # Copy ACR credentials to the right location
-   sudo cp ~/acr-credentials.env ~/azure-docker-playground/docker-challenges/.env
-   
-   # Set up challenges with ACR information
-   sudo ./scripts/setup-challenges.sh $ACR_NAME $ACR_LOGIN_SERVER
-   ```
+    # [VM] Setup GUI Environment (Desktop, xRDP fixes, Firefox fixes)
+    ./scripts/run-ansible-local.sh ansible/gui-setup.yml
 
-6. **[LOCAL]** Verify the deployment:
-   ```bash
-   # Verify VM is running
-   az vm show --resource-group $RESOURCE_GROUP --name $GUI_VM_NAME --query powerState -o tsv
-   
-   # Verify ACR is accessible
-   az acr login --name $ACR_NAME
-   ```
+    # [VM] Setup Docker Challenges (Reads ACR info from the uploaded .env file)
+    # Ensure the .env file (uploaded in Step 3) is present in ~/docker-playground
+    source .env # Load ACR variables into the current shell session
+    ./scripts/run-ansible-local.sh ansible/challenges.yml --extra-vars "acr_name=$ACR_NAME acr_login_server=$ACR_LOGIN_SERVER acr_password='$ACR_PASSWORD'"
+    ```
+    *   *Note:* The `challenges.yml` playbook expects the `.env` file (containing ACR credentials) to be present in the `~/docker-playground` directory on the VM. The upload in Step 3 ensures this.
+
+### Step 5: User Management (Optional) [VM]
+
+For providing access to participants without sharing the admin credentials:
+
+1.  Run the user creation script **on the VM**:
+    ```bash
+    # [VM] Navigate to scripts directory if needed
+    cd ~/docker-playground/scripts
+
+    # [VM] Create a user (replace <username> and <password>)
+    sudo ./create-user.sh <username> <password>
+    ```
+2.  Provide the created `<username>` and `<password>` to the participant. They can connect using the same Azure Bastion RDP method described in Step 3, but using their own credentials.
+
+### Deployment Complete
+
+The Azure Docker Playground environment is now fully deployed and configured.
 
 ## User Management
 
@@ -201,50 +228,37 @@ Implement the following maintenance schedule for optimal performance:
 
 To update the Docker Playground environment:
 
-1. **[VM]** Connect to the VM via Azure Bastion:
-
-   **To connect via Azure Bastion:**
-   1. Go to the Azure Portal (https://portal.azure.com)
-   2. Navigate to the VM resource (`adp-dev-gui-vm`)
-   3. Click on "Connect" and select "Bastion"
-   4. Enter the username (`azureadmin`) and password you set earlier
-   5. Click "Connect"
-
-2. **[VM]** Navigate to the project directory:
+1. **[LOCAL]** Pull the latest changes from your Git repository:
    ```bash
-   cd ~/azure-docker-playground
+   cd /path/to/your/local/docker-playground
+   git pull origin main
+   ```
+2. **[LOCAL/PORTAL]** Connect to the VM via Bastion.
+3. **[LOCAL/PORTAL]** Upload the updated project files/directories (e.g., `ansible/`, `scripts/`) to the VM using Bastion file transfer, overwriting existing files.
+4. **[VM]** Re-run the relevant Ansible playbooks using `run-ansible-local.sh` as shown in Step 4 of the deployment process to apply the changes.
+
+### Resetting the Environment
+
+Refer to the `reset-environment.sh` script for options to reset the VM or Docker environment. (Further details may need to be added here depending on the final state of the reset script).
+
+### Destroying the Environment
+
+To completely remove all deployed Azure resources:
+
+1. **[LOCAL]** Run the destroy script:
+   ```bash
+   # [LOCAL] Ensure RESOURCE_GROUP is set in your environment or .env file
+   source .env
+   ./scripts/destroy-env.sh $RESOURCE_GROUP
    ```
 
-3. **[VM]** Pull the latest changes:
-   ```bash
-   git pull
-   ```
+### Available Scripts Summary
 
-4. **[VM]** Run the update script:
-   ```bash
-   ./scripts/reset-environment.sh
-   ```
-   - Select option 1 for a quick reset (Docker resources only)
-   - Select option 2 for a full reset (VM redeployment)
-
-### Resetting Challenges
-
-To reset all challenges for a specific user:
-
-1. **[VM]** Connect to the VM via Azure Bastion:
-
-   **To connect via Azure Bastion:**
-   1. Go to the Azure Portal (https://portal.azure.com)
-   2. Navigate to the VM resource (`adp-dev-gui-vm`)
-   3. Click on "Connect" and select "Bastion"
-   4. Enter the username (`azureadmin`) and password you set earlier
-   5. Click "Connect"
-
-2. **[VM]** Reset challenges for a user:
-   ```bash
-   # Reset all challenges for a specific user
-   sudo -u <username> bash -c 'cd ~/azure-docker-playground/docker-challenges && for d in */; do cd "$d" && ./reset.sh && cd ..; done'
-   ```
+-   **[LOCAL]** `scripts/deploy-azure-playground.sh`: Deploys Azure resources and performs initial VM configuration (IP removal, password set).
+-   **[VM]** `scripts/run-ansible-local.sh`: Helper script to execute Ansible playbooks correctly on the VM itself.
+-   **[VM]** `scripts/create-user.sh`: Creates dedicated user accounts for participants.
+-   **[LOCAL]** `scripts/destroy-env.sh`: Removes all Azure resources associated with the deployment.
+-   **[VM/LOCAL]** `scripts/reset-environment.sh`: Provides options to reset the VM or Docker environment (details TBC).
 
 ## Troubleshooting
 
@@ -471,4 +485,5 @@ Keep track of environment versions:
 ```bash
 # [VM] Create a version file after each major update
 echo "Azure Docker Playground v1.0.0 - $(date)" > /home/azureadmin/azure-docker-playground/VERSION
+
 ```
