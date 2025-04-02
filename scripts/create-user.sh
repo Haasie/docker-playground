@@ -97,6 +97,36 @@ chmod 644 $DESKTOP_DIR/USER_GUIDE.md
 sed -i "s|/home/azureadmin/|/home/$USERNAME/|g" $DESKTOP_DIR/Challenges.desktop
 sed -i "s|/home/azureadmin/|/home/$USERNAME/|g" $DESKTOP_DIR/ADP_Terminal.desktop
 
+# Set up LXDE configuration for the new user
+echo -e "${BLUE}Setting up LXDE desktop environment for $USERNAME...${NC}"
+LXDE_CONFIG_DIR="/home/$USERNAME/.config/lxsession/LXDE"
+mkdir -p $LXDE_CONFIG_DIR
+chown -R $USERNAME:$USERNAME "/home/$USERNAME/.config"
+
+# Copy LXDE configuration from admin user if it exists, or create a new one
+if [ -f "/home/azureadmin/.config/lxsession/LXDE/desktop.conf" ]; then
+    cp "/home/azureadmin/.config/lxsession/LXDE/desktop.conf" "$LXDE_CONFIG_DIR/"
+else
+    # Create default LXDE configuration
+    cat > "$LXDE_CONFIG_DIR/desktop.conf" << EOF
+[Session]
+window_manager=openbox
+[GTK]
+sNet/ThemeName=Clearlooks
+sNet/IconThemeName=nuoveXT2
+EOF
+fi
+
+# Set proper ownership and permissions
+chown $USERNAME:$USERNAME "$LXDE_CONFIG_DIR/desktop.conf"
+chmod 644 "$LXDE_CONFIG_DIR/desktop.conf"
+
+# Ensure LXDE is the default session for this user
+echo -e "${BLUE}Setting LXDE as default session for $USERNAME...${NC}"
+echo "[Desktop]\nSession=LXDE" > "/home/$USERNAME/.dmrc"
+chown $USERNAME:$USERNAME "/home/$USERNAME/.dmrc"
+chmod 644 "/home/$USERNAME/.dmrc"
+
 echo -e "\n${GREEN}User $USERNAME has been created successfully!${NC}"
 echo -e "${BLUE}They can now log in via Azure Bastion with these credentials:${NC}"
 echo -e "  Username: ${YELLOW}$USERNAME${NC}"
