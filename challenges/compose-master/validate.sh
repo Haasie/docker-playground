@@ -11,13 +11,13 @@ max_retries=3
 retry_delay=5
 response="000"
 for (( i=1; i<=max_retries; i++ )); do
-    echo "Attempt $i/$max_retries: Checking WordPress on http://localhost:80..."
-    response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:80)
+    echo "Attempt $i/$max_retries: Checking WordPress setup page at http://localhost/wp-admin/install.php..."
+    response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost/wp-admin/install.php)
     if [ "$response" == "200" ]; then
-        echo "WordPress responded successfully."
+        echo "WordPress setup page responded successfully."
         break
     fi
-    echo "WordPress not ready yet, waiting $retry_delay seconds..."
+    echo "WordPress setup page not ready yet, waiting $retry_delay seconds..."
     sleep $retry_delay
 done
 
@@ -45,7 +45,7 @@ else
     echo "❌ Validation failed."
 
     if [ "$response" != "200" ]; then
-        echo "- WordPress did not respond with HTTP 200 on port 80 (Status: $response)"
+        echo "- WordPress setup page (http://localhost/wp-admin/install.php) did not respond with HTTP 200 (Status: $response)"
     fi
 
     if [ "$wp_running" -eq 0 ]; then
@@ -59,13 +59,13 @@ else
     echo -e "\nMake sure you:"
     echo "1. Ran 'docker compose up -d' in the 'compose-master' directory"
     echo "2. Both '${wp_container_name}' and '${db_container_name}' containers are running (check 'docker ps')"
-    echo "3. WordPress is fully initialized and accessible (check 'curl -I http://localhost:80')"
+    echo "3. WordPress is fully initialized and accessible (check 'curl -I http://localhost/wp-admin/install.php')"
     echo "4. Check container logs ('docker compose logs') for errors."
 
     echo -e "\nTry running these commands:"
     echo "docker compose logs wordpress"
     echo "docker compose logs db"
     echo "docker ps"
-    echo "curl -I http://localhost:80"
+    echo "curl -I http://localhost/wp-admin/install.php"
     exit 1
 fi
