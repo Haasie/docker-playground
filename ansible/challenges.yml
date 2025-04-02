@@ -79,7 +79,7 @@
           Version=1.0
           Name=Docker Challenges
           Comment=Access Docker Security Challenges
-          Exec=gnome-terminal --working-directory={{ challenges_dir }}
+          Exec=lxterminal --working-directory={{ challenges_dir }}
           Icon=utilities-terminal
           Terminal=false
           Type=Application
