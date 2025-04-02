@@ -26,24 +26,21 @@ IMAGE_NAME=$(cat .image_info)
 
 echo "Checking for image: $IMAGE_NAME"
 
-# Check if the image exists in ACR
-IMAGE_EXISTS=$(az acr repository show --name "$ACR_NAME" --image "${IMAGE_NAME#*/}" 2>/dev/null)
-
-if [ -z "$IMAGE_EXISTS" ]; then
-    echo -e "❌ Validation failed. Image not found in ACR."
-    echo "Make sure you've successfully pushed the image to ACR using the build-and-push.sh script."
-    exit 1
-fi
-
-# Get the username from the image
-echo "Pulling image to check build info..."
+# Check if the image exists by attempting to pull it
+echo "Checking if image exists in ACR..."
 docker pull "$IMAGE_NAME" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
-    echo -e "❌ Validation failed. Could not pull the image from ACR."
-    echo "This might be due to authentication issues. Make sure you're logged in to ACR with 'az acr login --name $ACR_NAME'."
+    echo -e "❌ Validation failed. Could not pull image from ACR: $IMAGE_NAME"
+    echo "Make sure you've successfully pushed the image to ACR using the build-and-push.sh script."
+    echo "You may need to log in to ACR first with: docker login $ACR_LOGIN_SERVER -u $ACR_USERNAME -p <password>"
     exit 1
 fi
+
+echo "Successfully pulled image from ACR."
+
+# Image has already been pulled in the previous step
+echo "Preparing to validate image content..."
 
 # Run the container to check the username
 echo "Starting container to validate the image..."
