@@ -225,6 +225,10 @@ To completely remove all deployed Azure resources:
 - **[LOCAL]** `scripts/deploy-azure-playground.sh`: Deploys Azure resources and performs initial VM configuration (IP removal, password set).
 - **[VM]** `scripts/run-ansible-local.sh`: Helper script to execute Ansible playbooks correctly on the VM itself.
 - **[VM]** `scripts/create-user.sh`: Creates dedicated user accounts for participants.
+- **[VM]** `scripts/challenge-cli`: Tool for managing Docker challenges and tracking user progress.
+  - `challenge-cli list-challenges`: Lists all available challenges.
+  - `challenge-cli list-badges`: Shows which challenges have been completed.
+  - `challenge-cli validate <challenge>`: Validates a specific challenge.
 - **[LOCAL]** `scripts/destroy-env.sh`: Removes all Azure resources associated with the deployment.
 - **[VM/LOCAL]** `scripts/reset-environment.sh`: Provides options to reset the VM or Docker environment (details TBC).
 

@@ -100,13 +100,22 @@ Each challenge awards a badge upon successful completion:
 - **Challenge 2**: "Orchestrator" badge
 - **Challenge 3**: "ACR Pro" badge
 
-### Viewing Your Badges
+### Tracking Your Progress
 
-Use the challenge CLI tool to view your earned badges:
+The Docker Playground includes a command-line tool called `challenge-cli` to help you track your progress through the challenges. This tool allows you to view available challenges, check which ones you've completed, and validate your solutions.
 
 ```bash
+# List all available challenges
+challenge-cli list-challenges
+
+# View your earned badges (completed challenges)
 challenge-cli list-badges
+
+# Validate a specific challenge
+challenge-cli validate hello-container
 ```
+
+When you run `challenge-cli list-badges`, you'll see a list of all challenges with checkmarks (✅) for completed ones and X marks (❌) for incomplete ones, along with your overall progress.
 
 ## Tips and Tricks
 

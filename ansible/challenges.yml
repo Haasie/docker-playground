@@ -88,3 +88,21 @@
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
         mode: '0755' # Make it executable
+        
+    # Install the challenge-cli tool
+    - name: Copy challenge-cli script to scripts directory
+      copy:
+        src: "{{ playbook_dir }}/../scripts/challenge-cli"
+        dest: "{{ challenges_dir }}/../scripts/challenge-cli"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+        
+    # Create symlink to make challenge-cli available system-wide
+    - name: Create symlink for challenge-cli in /usr/local/bin
+      file:
+        src: "{{ challenges_dir }}/../scripts/challenge-cli"
+        dest: "/usr/local/bin/challenge-cli"
+        state: link
+        owner: root
+        group: root
