@@ -37,6 +37,8 @@
           - lxsession
           - lxterminal
           - firefox
+          - dbus-x11  # Required for Firefox portal services
+          - xdg-desktop-portal  # Required for Firefox portal services
         state: present
 
     - name: Install xRDP and X11 utilities
@@ -54,8 +56,8 @@
         append: yes
       notify: Restart xRDP
       
-    # Simple and reliable X11 authorization fix for RDP
-    - name: Create simple X11 fix script
+    # Enhanced X11 authorization fix for RDP with Firefox support
+    - name: Create enhanced X11 fix script
       copy:
         dest: "/usr/local/bin/fix-x11-display.sh"
         owner: root
@@ -63,7 +65,13 @@
         mode: '0755'
         content: |
           #!/bin/bash
-          # Simple script to fix X11 display authorization issues in RDP sessions
+          # Enhanced script to fix X11 display and Firefox issues in RDP sessions
+          
+          # Get the current display number
+          DISPLAY_NUM=$(echo $DISPLAY | cut -d: -f2 | cut -d. -f1)
+          if [ -z "$DISPLAY_NUM" ]; then
+            DISPLAY_NUM=10  # Default to :10 if not found
+          fi
           
           # Allow any local connections to X server
           xhost +local: > /dev/null 2>&1
@@ -73,7 +81,15 @@
             chmod 600 ~/.Xauthority
           fi
           
-          echo "X11 display authorization configured."
+          # Fix Firefox portal issues
+          export MOZ_DISABLE_CONTENT_SANDBOX=1
+          export MOZ_DISABLE_RDD_SANDBOX=1
+          export MOZ_DBUS_REMOTE=1
+          
+          # Set proper display environment variable
+          export DISPLAY=:$DISPLAY_NUM
+          
+          echo "X11 display authorization configured for display :$DISPLAY_NUM"
           exit 0
 
     # Add the fix script to .bashrc for all users
@@ -83,8 +99,13 @@
         block: |
           # Always fix X11 display authorization for RDP sessions
           if [ -n "$DISPLAY" ]; then
-            # Run the simple fix script for every graphical session
-            /usr/local/bin/fix-x11-display.sh > /dev/null 2>&1
+            # Run the enhanced fix script for every graphical session
+            source /usr/local/bin/fix-x11-display.sh > /dev/null 2>&1
+            
+            # Firefox-specific environment variables
+            export MOZ_DISABLE_CONTENT_SANDBOX=1
+            export MOZ_DISABLE_RDD_SANDBOX=1
+            export MOZ_DBUS_REMOTE=1
           fi
         marker: "# {mark} ANSIBLE MANAGED BLOCK - X11 DISPLAY FIX"
         create: yes
@@ -98,7 +119,7 @@
         mode: '0755'
         content: |
           #!/bin/bash
-          # Fix X11 display authorization for RDP sessions
+          # Fix X11 display authorization for RDP sessions and Firefox issues
           if [ -n "$DISPLAY" ]; then
             # Allow local connections to X server
             xhost +local: > /dev/null 2>&1 || true
@@ -320,7 +341,7 @@
           Type=Application
           Name={{ browser_name }}
           Comment=Access the Internet
-          Exec={{ browser_exec }}
+          Exec=bash -c 'source /usr/local/bin/fix-x11-display.sh && {{ browser_exec }}'
           Icon={{ browser_icon }}
           Terminal=false
           Categories=Network;WebBrowser;
