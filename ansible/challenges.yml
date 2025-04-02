@@ -37,6 +37,24 @@
         group: "{{ current_user }}"
         mode: '0755'
         directory_mode: '0755'
+        
+    # Create .env file with ACR credentials
+    - name: Create .env file with ACR credentials
+      copy:
+        content: |
+          # Environment variables for Docker Challenges
+          ACR_NAME={{ acr_name | default('') }}
+          ACR_LOGIN_SERVER={{ acr_login_server | default('') }}
+          USERNAME={{ current_user }}
+          
+          # ACR admin credentials
+          ACR_USERNAME={{ acr_name | default('') }}
+          # Note: Password will need to be manually added if needed
+          ACR_PASSWORD=""
+        dest: "{{ challenges_dir }}/.env"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0600'
 
     # Create Desktop directory if it doesn't exist
     - name: Check if Desktop directory exists
